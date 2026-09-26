@@ -94,6 +94,61 @@ export class VercelBlobStorage implements StorageProvider {
   }
 }
 
+/**
+ * Ambiente de testes com o Supabase conectado pela Vercel: Supabase Storage num bucket PRIVADO, criado no
+ * primeiro envio. Usa a chave secreta do servidor (SUPABASE_SERVICE_ROLE_KEY), que nunca vai ao navegador.
+ */
+export class SupabaseStorage implements StorageProvider {
+  readonly kind = "supabase";
+  private bucketReady?: Promise<void>;
+  constructor(private readonly cfg: { url: string; key: string; bucket: string }) {}
+  private headers(extra: Record<string, string> = {}) {
+    const h: Record<string, string> = { apikey: this.cfg.key, ...extra };
+    // Chaves no formato antigo (JWT) também vão no Authorization; as novas (sb_secret_) só no apikey.
+    if (this.cfg.key.startsWith("eyJ")) h.authorization = `Bearer ${this.cfg.key}`;
+    return h;
+  }
+  private objectUrl(key: string) {
+    assertSafeKey(key);
+    return `${this.cfg.url.replace(/\/$/, "")}/storage/v1/object/${this.cfg.bucket}/${key}`;
+  }
+  private ensureBucket() {
+    this.bucketReady ??= (async () => {
+      const res = await fetch(`${this.cfg.url.replace(/\/$/, "")}/storage/v1/bucket`, {
+        method: "POST",
+        headers: this.headers({ "content-type": "application/json" }),
+        body: JSON.stringify({ id: this.cfg.bucket, name: this.cfg.bucket, public: false }),
+      });
+      const body = await res.text();
+      if (!res.ok && !/already exists|Duplicate/i.test(body)) throw new Error(`Supabase Storage: não foi possível criar o bucket (${res.status} ${body}).`);
+    })().catch((err) => {
+      this.bucketReady = undefined;
+      throw err;
+    });
+    return this.bucketReady;
+  }
+  async put(key: string, bytes: Uint8Array, contentType: string) {
+    const url = this.objectUrl(key);
+    await this.ensureBucket();
+    const res = await fetch(url, {
+      method: "POST",
+      headers: this.headers({ "content-type": contentType, "x-upsert": "true" }),
+      body: Buffer.from(bytes),
+    });
+    if (!res.ok) throw new Error(`Supabase Storage: falha ao enviar ${key} (${res.status} ${await res.text()}).`);
+  }
+  async get(key: string): Promise<StoredObject | null> {
+    const res = await fetch(this.objectUrl(key), { headers: this.headers() });
+    if (res.status === 400 || res.status === 404) return null;
+    if (!res.ok) throw new Error(`Supabase Storage: falha ao ler ${key} (${res.status}).`);
+    return { bytes: new Uint8Array(await res.arrayBuffer()), contentType: res.headers.get("content-type") ?? contentTypeFromKey(key) };
+  }
+  async remove(key: string) {
+    const res = await fetch(this.objectUrl(key), { method: "DELETE", headers: this.headers() });
+    if (!res.ok && res.status !== 400 && res.status !== 404) throw new Error(`Supabase Storage: falha ao apagar ${key} (${res.status}).`);
+  }
+}
+
 /** Testes. */
 export class MemoryStorage implements StorageProvider {
   readonly kind = "memory";
@@ -120,6 +175,9 @@ export function createStorage(env: Record<string, string | undefined> = process.
       secretAccessKey: env.STORAGE_SECRET_KEY,
     });
   if (env.BLOB_READ_WRITE_TOKEN) return new VercelBlobStorage(env.BLOB_READ_WRITE_TOKEN);
+  const supabaseUrl = env.SUPABASE_URL || env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SECRET_KEY;
+  if (supabaseUrl && supabaseKey) return new SupabaseStorage({ url: supabaseUrl, key: supabaseKey, bucket: env.SUPABASE_STORAGE_BUCKET || "foccus-car" });
   if (env.NODE_ENV === "production" && env.STORAGE_ALLOW_LOCAL !== "true")
     throw new Error("Storage não configurado: defina STORAGE_BUCKET, STORAGE_ACCESS_KEY e STORAGE_SECRET_KEY.");
   return new LocalDiskStorage(env.STORAGE_LOCAL_DIR ?? ".storage");

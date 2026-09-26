@@ -1,4 +1,4 @@
-import { appDatabaseUrl, derivedAppRolePassword } from "@foccus/db";
+import { appDatabaseUrl, derivedAppRolePassword, ownerDatabaseUrl } from "@foccus/db";
 import { runMigrations } from "@foccus/db/migrate";
 import postgres from "postgres";
 import { seedDemo } from "./seed";
@@ -9,12 +9,15 @@ import { seedDemo } from "./seed";
  * 2. aplica migrations e políticas;
  * 3. com DEMO_MODE=true, instala a locadora de demonstração (só na primeira vez);
  * 4. confere que a aplicação consegue conectar com o papel `foccus_app`.
+ * Funciona com a Neon e com o Supabase (as variáveis de cada integração são reconhecidas em @foccus/db).
  */
 async function main() {
   const env = process.env;
-  const ownerUrl = env.DATABASE_MIGRATION_URL || env.DATABASE_URL_UNPOOLED || env.DATABASE_URL;
-  if (!ownerUrl) throw new Error("Banco não conectado: adicione o Postgres (Neon) ao projeto na Vercel, em Storage.");
+  const ownerUrl = ownerDatabaseUrl(env);
+  if (!ownerUrl) throw new Error("Banco não conectado: adicione o Postgres (Neon ou Supabase) ao projeto na Vercel, em Storage.");
   if (!env.BETTER_AUTH_SECRET) throw new Error("Defina BETTER_AUTH_SECRET nas variáveis de ambiente do projeto na Vercel.");
+
+  await checkDatabaseIsOurs(ownerUrl);
 
   const useAppRole = Boolean(env.VERCEL) && env.DATABASE_APP_ROLE !== "owner" && !env.DATABASE_APP_URL;
   if (useAppRole) {
@@ -35,6 +38,7 @@ async function main() {
 
   await runMigrations(ownerUrl);
   console.log("Migrations e políticas aplicadas.");
+  await closeSupabaseDataApi(ownerUrl);
 
   if (env.DEMO_MODE === "true") await seedDemo({ databaseUrl: ownerUrl });
 
@@ -49,6 +53,50 @@ async function main() {
     } finally {
       await app.end();
     }
+  }
+}
+
+/**
+ * Recusa instalar o Foccus Car num banco que já tem outro sistema no schema public (ex.: um projeto do
+ * Supabase usado por outro aplicativo), para nunca misturar as tabelas e os dados dos dois.
+ */
+async function checkDatabaseIsOurs(ownerUrl: string) {
+  const sql = postgres(ownerUrl, { max: 1, onnotice: () => {} });
+  try {
+    const [row] = await sql<{ total: number; ours: boolean }[]>`
+      select count(*)::int as total, bool_or(table_name = 'companies') as ours
+      from information_schema.tables where table_schema = 'public'`;
+    if (row && row.total > 0 && !row.ours) {
+      throw new Error(
+        `Este banco já tem ${row.total} tabela(s) de outro sistema. Crie um projeto novo e vazio para o Foccus Car (no Supabase ou na Neon) e conecte-o ao projeto na Vercel.`,
+      );
+    }
+  } finally {
+    await sql.end();
+  }
+}
+
+/**
+ * O Supabase publica automaticamente as tabelas do schema public na sua API (papéis anon e authenticated).
+ * O Foccus Car não usa essa API: todo acesso passa pelo servidor com o papel foccus_app. Retiramos o acesso
+ * desses papéis para que ninguém leia usuários ou sessões com a chave pública do projeto.
+ */
+async function closeSupabaseDataApi(ownerUrl: string) {
+  const sql = postgres(ownerUrl, { max: 1, onnotice: () => {} });
+  try {
+    const roles = (await sql<{ rolname: string }[]>`select rolname from pg_roles where rolname in ('anon', 'authenticated')`).map((r) => r.rolname);
+    if (!roles.length) return;
+    const list = roles.join(", ");
+    await sql.unsafe(`
+      REVOKE ALL ON ALL TABLES IN SCHEMA public FROM ${list};
+      REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM ${list};
+      REVOKE ALL ON ALL FUNCTIONS IN SCHEMA public FROM ${list};
+      ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE ALL ON TABLES FROM ${list};
+      ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE ALL ON SEQUENCES FROM ${list};
+      ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE ALL ON FUNCTIONS FROM ${list};`);
+    console.log("API pública do Supabase fechada para as tabelas do Foccus Car.");
+  } finally {
+    await sql.end();
   }
 }
 

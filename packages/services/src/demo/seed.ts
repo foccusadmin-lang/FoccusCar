@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { CHECKLIST_ITEMS, type AccountStatus, type Role } from "@foccus/core";
 import {
   auditLogs, checklistItems, checklists, companyMembers, contracts, createDb, customerDocuments, customers, damages,
-  depositMovements, deposits, drivers, ensureCompany, favorites, financialAccounts, financialTransactions, fines,
+  depositMovements, deposits, drivers, ensureCompany, ownerDatabaseUrl, favorites, financialAccounts, financialTransactions, fines,
   geofences, gpsDevices, gpsPositions, locations, maintenance, maintenanceItems, notifications, occurrences,
   paymentEvents, paymentGatewayConfigs, payments, rentalCharges, rentalDrivers, rentals, representativeListings,
   representatives, reservations, reviews, securityAlerts, telematicsCommands, users, accounts, vehicleCategories,
@@ -163,7 +163,7 @@ const POSITIONS: Record<string, [number, number]> = {
 // ── Seed ───────────────────────────────────────────────────────────────────
 
 export async function seedDemo(opts: { databaseUrl?: string; companySlug?: string } = {}) {
-  const url = opts.databaseUrl ?? process.env.DATABASE_MIGRATION_URL ?? process.env.DATABASE_URL_UNPOOLED ?? process.env.DATABASE_URL;
+  const url = opts.databaseUrl ?? ownerDatabaseUrl();
   const db = createDb(url);
   try {
     const adminEmail = `admin@${DEMO_DOMAIN}`;

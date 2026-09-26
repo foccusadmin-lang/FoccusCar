@@ -1,11 +1,11 @@
 import { eq } from "drizzle-orm";
-import { createDb, withTenant } from "./client";
+import { createDb, ownerDatabaseUrl, withTenant } from "./client";
 import { ensureCompany } from "./bootstrap";
 import { locations, vehicleCategories, vehicleEvents, vehicles } from "./schema";
 
 /** Dados de desenvolvimento: empresa Foccus Car, categorias e alguns veículos na vitrine. */
 async function main() {
-  const db = createDb(process.env.DATABASE_MIGRATION_URL ?? process.env.DATABASE_URL);
+  const db = createDb(ownerDatabaseUrl());
   const company = await ensureCompany(db, {
     name: "Foccus Car",
     slug: process.env.DEFAULT_COMPANY_SLUG ?? "foccus-car",

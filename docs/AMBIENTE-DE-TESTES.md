@@ -1,4 +1,4 @@
-# Ambiente de testes (Vercel + Neon)
+# Ambiente de testes (Vercel + Neon ou Supabase)
 
 Um endereço na internet com o Foccus Car rodando e uma **locadora de demonstração** já preenchida, para testar
 como administrador, equipe, cliente e representante antes de liberar para clientes reais.
@@ -62,6 +62,19 @@ Só é preciso **uma conta na Vercel**, criada com o próprio GitHub. O banco (N
 
 Depois disso, cada mudança que entrar na branch `main` publica sozinha no mesmo endereço.
 
+### Usando o Supabase no lugar da Neon
+
+Nos passos 4 e 5, em vez de Neon e Blob, use **Storage → Supabase** (ou conecte um projeto do Supabase pela
+integração da Vercel). O mesmo projeto do Supabase serve de banco e de armazenamento de arquivos: as fotos e
+os documentos ficam num bucket **privado** `foccus-car`, criado sozinho no primeiro envio.
+
+- Use um projeto **novo e vazio** do Supabase só para o Foccus Car. Se o banco já tiver tabelas de outro
+  sistema, o build para com uma mensagem e não altera nada.
+- O build retira o acesso da API pública do Supabase (chave `anon`) às tabelas do Foccus Car: tudo passa
+  pelo servidor do app, com o isolamento por empresa.
+- Variáveis que a integração preenche e o app reconhece: `POSTGRES_URL`, `POSTGRES_URL_NON_POOLING`,
+  `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY`.
+
 ### O que acontece no build
 
 `apps/web/vercel.json` roda `prepare:test-env` antes do `next build`:
@@ -73,7 +86,7 @@ Depois disso, cada mudança que entrar na branch `main` publica sozinha no mesmo
 4. confere que a aplicação conecta como `foccus_app`.
 
 Variáveis que a Vercel preenche sozinha: `DATABASE_URL`, `DATABASE_URL_UNPOOLED` (Neon), `BLOB_READ_WRITE_TOKEN`
-(Blob) e o endereço público do projeto (usado no login quando `BETTER_AUTH_URL` não está definida).
+(Blob), `POSTGRES_URL`, `POSTGRES_URL_NON_POOLING`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (Supabase) e o endereço público do projeto (usado no login quando `BETTER_AUTH_URL` não está definida).
 
 ### Recomeçar do zero
 
