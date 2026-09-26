@@ -1,0 +1,62 @@
+/* Foccus Car — tokens globais (tema escuro é o padrão da marca; claro para contextos de leitura). */
+:root {
+  --fc-black-950: #050506; --fc-black-900: #0b0b0d; --fc-black-850: #111114; --fc-black-800: #17171b;
+  --fc-black-700: #212127; --fc-black-600: #2c2c33; --fc-black-500: #3a3a43;
+  --fc-gold-50: #fff8e6; --fc-gold-100: #fdedc2; --fc-gold-200: #f9dc8a; --fc-gold-300: #f4c95a; --fc-gold-400: #f0b030;
+  --fc-gold-500: #e09020; --fc-gold-600: #c07410; --fc-gold-700: #945609; --fc-gold-800: #6a3d07; --fc-gold-900: #3f2405;
+  --fc-silver-50: #f7f7f8; --fc-silver-100: #ececef; --fc-silver-200: #d9d9de; --fc-silver-300: #bdbdc5;
+  --fc-silver-400: #9a9aa5; --fc-silver-500: #767682; --fc-silver-600: #5a5a65;
+
+  /* Semânticos (tema escuro) */
+  --fc-bg: var(--fc-black-950);
+  --fc-surface: var(--fc-black-850);
+  --fc-surface-raised: var(--fc-black-800);
+  --fc-surface-sunken: var(--fc-black-900);
+  --fc-border: #26262d;
+  --fc-border-strong: var(--fc-black-500);
+  --fc-text: #f4f2ee;
+  --fc-text-muted: var(--fc-silver-400);
+  --fc-text-subtle: var(--fc-silver-500);
+  --fc-accent: var(--fc-gold-400);
+  --fc-accent-strong: var(--fc-gold-500);
+  --fc-accent-text: #1a1204;
+  --fc-gold-gradient: linear-gradient(135deg, #f9dc8a 0%, #f0b030 38%, #c07410 72%, #f4c95a 100%);
+  --fc-silver-gradient: linear-gradient(180deg, #ffffff 0%, #bdbdc5 55%, #8a8a95 100%);
+  --fc-focus: 0 0 0 3px rgba(240, 176, 48, 0.45);
+
+  --fc-success: #3fa56b; --fc-success-soft: #173826;
+  --fc-warning: #e3a33b; --fc-warning-soft: #3a2a10;
+  --fc-danger: #d9534f; --fc-danger-soft: #3b1717;
+  --fc-info: #6e9bd1; --fc-info-soft: #16263a;
+
+  --fc-radius-sm: 6px; --fc-radius-md: 10px; --fc-radius-lg: 16px; --fc-radius-xl: 24px; --fc-radius-pill: 999px;
+  --fc-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --fc-shadow-md: 0 8px 24px rgba(0, 0, 0, 0.45);
+  --fc-shadow-glow: 0 0 0 1px rgba(240, 176, 48, 0.25), 0 10px 30px rgba(240, 176, 48, 0.12);
+
+  --fc-font-display: "Orbitron", "Rajdhani", system-ui, sans-serif;
+  --fc-font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --fc-touch: 44px; /* área mínima de toque */
+  --fc-gutter: 16px;
+  --fc-max: 1280px;
+  color-scheme: dark;
+}
+
+[data-theme="light"] {
+  --fc-bg: #f7f6f3;
+  --fc-surface: #ffffff;
+  --fc-surface-raised: #ffffff;
+  --fc-surface-sunken: #efede8;
+  --fc-border: #e2dfd8;
+  --fc-border-strong: #c9c5bb;
+  --fc-text: #111114;
+  --fc-text-muted: #5a5a65;
+  --fc-text-subtle: #767682;
+  --fc-accent: #c07410;
+  --fc-accent-strong: #945609;
+  --fc-accent-text: #ffffff;
+  color-scheme: light;
+}
+
+@media (min-width: 768px) { :root { --fc-gutter: 24px; } }
+@media (min-width: 1280px) { :root { --fc-gutter: 32px; } }

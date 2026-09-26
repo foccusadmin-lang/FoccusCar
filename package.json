@@ -1,0 +1,26 @@
+{
+  "name": "foccus-car",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @foccus/web dev",
+    "build": "pnpm --filter @foccus/web build",
+    "typecheck": "pnpm -r typecheck",
+    "test": "vitest run",
+    "db:generate": "pnpm --filter @foccus/db generate",
+    "db:migrate": "pnpm --filter @foccus/db migrate",
+    "db:seed": "pnpm --filter @foccus/db seed",
+    "test:integration": "TEST_DATABASE_URL=${TEST_DATABASE_URL:-postgres://foccus_app:foccus_app_dev@localhost:5432/foccus} TEST_DATABASE_MIGRATION_URL=${TEST_DATABASE_MIGRATION_URL:-postgres://foccus_owner:foccus_owner_dev@localhost:5432/foccus} vitest run",
+    "db:grant-role": "pnpm --filter @foccus/db grant-role"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.9.0",
+    "vitest": "^3.2.0",
+    "tsx": "^4.20.0"
+  }
+}
