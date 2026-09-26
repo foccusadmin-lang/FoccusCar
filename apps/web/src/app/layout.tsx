@@ -25,6 +25,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="pt-BR">
       <body>
         <a href="#conteudo" className="sr-only">Ir para o conteúdo</a>
+        {process.env.DEMO_MODE === "true" && (
+          <div className="demo-ribbon" role="note">Ambiente de testes com dados fictícios. Não use dados reais de clientes.</div>
+        )}
         <SiteHeader />
         <main id="conteudo">{children}</main>
         <footer className="footer">

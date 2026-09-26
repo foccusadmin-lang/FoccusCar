@@ -1,6 +1,6 @@
 import { ROLES, type Role } from "@foccus/core";
 import { eq } from "drizzle-orm";
-import { createDb } from "./client";
+import { createDb, ownerDatabaseUrl } from "./client";
 import { grantRole } from "./bootstrap";
 import { companies } from "./schema";
 
@@ -14,7 +14,7 @@ async function main() {
     console.error(`Uso: grant-role <empresa-slug> <email> <${ROLES.join("|")}>`);
     process.exit(1);
   }
-  const db = createDb(process.env.DATABASE_MIGRATION_URL ?? process.env.DATABASE_URL);
+  const db = createDb(ownerDatabaseUrl());
   const [company] = await db.select().from(companies).where(eq(companies.slug, slug));
   if (!company) throw new Error(`Empresa ${slug} não encontrada.`);
   const user = await grantRole(db, { companyId: company.id, email, role: role as Role });

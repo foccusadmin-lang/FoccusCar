@@ -9,7 +9,7 @@ export function VehicleCard({ v }: { v: ShowcaseVehicle }) {
   return (
     <Link href={`/veiculos/${v.id}`} className="card vehicle-card" aria-label={`${v.title} ${v.modelYear}`}>
       <div className="vehicle-media">
-        <Image src={vehicleImage(v.coverKey, v.color)} alt="" fill sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" />
+        <Image src={vehicleImage(v.coverUrl, v.color)} alt="" fill unoptimized={Boolean(v.coverUrl)} sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" />
         <div className="vehicle-flags">
           {v.featured && <Badge tone="gold" plain>Destaque</Badge>}
           {v.available ? <Badge tone="success">Disponível</Badge> : <Badge tone="warning">Alugado</Badge>}

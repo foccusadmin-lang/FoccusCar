@@ -57,3 +57,36 @@ export async function requireAccess() {
   if (!ctx) throw new AccessDeniedError("Entre na sua conta para continuar.", 401);
   return ctx;
 }
+
+/** Lê o corpo JSON com mensagem humana se vier inválido. */
+export async function readJson(req: Request): Promise<unknown> {
+  try {
+    return await req.json();
+  } catch {
+    throw new AppError("Dados inválidos. Atualize a página e tente novamente.", 400, "BAD_JSON");
+  }
+}
+
+/** Lê um arquivo de formulário multipart com limite de tamanho. */
+export async function readFormFile(req: Request, maxMb: number) {
+  const length = Number(req.headers.get("content-length") ?? 0);
+  if (length > (maxMb + 1) * 1024 * 1024) throw new AppError(`O arquivo deve ter até ${maxMb} MB.`, 413, "TOO_LARGE");
+  const form = await req.formData();
+  const file = form.get("file");
+  const parsed = file instanceof File && file.size > 0
+    ? { fileName: file.name, contentType: file.type, bytes: new Uint8Array(await file.arrayBuffer()) }
+    : null;
+  return { form, file: parsed };
+}
+
+export function fileResponse(file: { bytes: Uint8Array; contentType: string; fileName?: string }, cache: "public" | "private" = "private") {
+  return new Response(Buffer.from(file.bytes), {
+    headers: {
+      "content-type": file.contentType,
+      ...(file.fileName ? { "content-disposition": `inline; filename="${file.fileName}"` } : {}),
+      "cache-control": cache === "public" ? "public, max-age=3600" : "private, no-store",
+      "x-content-type-options": "nosniff",
+      "content-security-policy": "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'",
+    },
+  });
+}

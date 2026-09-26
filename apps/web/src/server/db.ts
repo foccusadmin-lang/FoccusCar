@@ -1,4 +1,4 @@
 import "server-only";
-import { getDb } from "@foccus/db";
+import { lazyDb } from "@foccus/db";
 
-export const db = getDb();
+export const db = lazyDb();

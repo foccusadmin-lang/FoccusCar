@@ -149,3 +149,72 @@ h1, h2, h3 { line-height: 1.15; margin: 0; letter-spacing: -0.01em; }
 @media (min-width: 640px) { .summary dl { grid-template-columns: 180px 1fr; } }
 .summary dt { color: var(--fc-text-subtle); font-size: 14px; }
 .summary dd { margin: 0 0 8px; }
+.thumbs { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin; }
+.thumb { flex: none; width: 76px; height: 54px; padding: 0; border-radius: var(--fc-radius-sm); overflow: hidden; border: 2px solid transparent; background: var(--fc-surface-sunken); cursor: pointer; opacity: 0.7; }
+.thumb.active { border-color: var(--fc-accent); opacity: 1; }
+.thumb img { width: 100%; height: 100%; object-fit: cover; }
+
+.page-head { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; justify-content: space-between; margin-bottom: 20px; }
+.page-head h1 { font-size: clamp(24px, 5vw, 30px); }
+
+/* KPIs do dashboard */
+.kpi-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+@media (min-width: 768px) { .kpi-grid { grid-template-columns: repeat(4, 1fr); gap: 16px; } }
+.kpi { padding: 16px; display: flex; flex-direction: column; gap: 4px; }
+.kpi span { font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fc-text-subtle); }
+.kpi strong { font-size: clamp(22px, 5vw, 30px); font-family: var(--fc-font-display); }
+.kpi small { color: var(--fc-text-muted); font-size: 13px; }
+.bar { height: 8px; border-radius: 99px; background: var(--fc-surface-sunken); overflow: hidden; }
+.bar > i { display: block; height: 100%; background: var(--fc-gold-gradient); }
+
+/* Tabela responsiva (seção 96): tabela no computador, cartões no celular */
+.data-table { width: 100%; border-collapse: collapse; font-size: 15px; }
+.data-table th { text-align: left; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--fc-text-subtle); font-weight: 600; padding: 10px 12px; border-bottom: 1px solid var(--fc-border); }
+.data-table td { padding: 12px; border-bottom: 1px solid var(--fc-border); vertical-align: middle; }
+.data-table tbody tr:hover { background: var(--fc-surface); }
+.data-table a.row-link { font-weight: 600; }
+@media (max-width: 767px) {
+  .data-table thead { display: none; }
+  .data-table, .data-table tbody, .data-table tr, .data-table td { display: block; width: 100%; }
+  .data-table tr { border: 1px solid var(--fc-border); border-radius: var(--fc-radius-lg); padding: 12px 14px; margin-bottom: 10px; background: linear-gradient(180deg, var(--fc-surface-raised), var(--fc-surface)); }
+  .data-table td { border: 0; padding: 3px 0; }
+  .data-table td[data-label]::before { content: attr(data-label) ": "; color: var(--fc-text-subtle); font-size: 13px; }
+  .data-table td.hide-sm { display: none; }
+}
+.thumb-sm { width: 64px; max-width: none; height: 42px !important; border-radius: var(--fc-radius-sm); object-fit: cover; background: var(--fc-surface-sunken); display: block; }
+
+.tabs { display: flex; gap: 4px; overflow-x: auto; border-bottom: 1px solid var(--fc-border); margin-bottom: 20px; scrollbar-width: none; }
+.tabs a, .tabs button { flex: none; padding: 12px 14px; min-height: 44px; background: none; border: 0; border-bottom: 2px solid transparent; color: var(--fc-text-muted); cursor: pointer; font-weight: 500; }
+.tabs .active { color: var(--fc-text); border-bottom-color: var(--fc-accent); }
+
+.timeline { list-style: none; margin: 0; padding: 0 0 0 18px; border-left: 1px solid var(--fc-border-strong); display: flex; flex-direction: column; gap: 14px; }
+.timeline li { position: relative; }
+.timeline li::before { content: ""; position: absolute; left: -24px; top: 6px; width: 11px; height: 11px; border-radius: 50%; background: var(--fc-surface-sunken); border: 2px solid var(--fc-gold-600); }
+.timeline .meta { font-size: 13px; color: var(--fc-text-subtle); }
+
+.photo-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+@media (min-width: 640px) { .photo-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 1200px) { .photo-grid { grid-template-columns: repeat(4, 1fr); } }
+.photo-tile { overflow: hidden; display: flex; flex-direction: column; }
+.photo-tile img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; background: var(--fc-surface-sunken); }
+.photo-tile .actions { display: flex; flex-wrap: wrap; gap: 4px; padding: 8px; }
+.photo-tile .actions .btn { min-height: 36px; padding: 0 10px; font-size: 13px; }
+textarea.input { padding: 12px 14px; min-height: 90px; resize: vertical; }
+.check { display: flex; gap: 10px; align-items: center; min-height: 44px; cursor: pointer; }
+.check input { width: 20px; height: 20px; accent-color: var(--fc-accent); }
+fieldset.card { border: 1px solid var(--fc-border); margin: 0; }
+fieldset.card legend { padding: 0 8px; color: var(--fc-accent); font-size: 12px; letter-spacing: 0.2em; text-transform: uppercase; font-weight: 600; }
+.data-table .badge { white-space: nowrap; }
+.data-table td[data-label="KM"], .data-table td[data-label="Diária"], .data-table td[data-label="Placa"] { white-space: nowrap; }
+.table-wrap { width: 100%; overflow-x: auto; }
+
+/* Ambiente de testes: faixa no topo e atalhos de login por perfil (DEMO_MODE=true). */
+.demo-ribbon { background: var(--fc-gold-gradient); color: #111; text-align: center; font-size: 13px; font-weight: 600; padding: 6px var(--fc-gutter); }
+.demo-logins { margin-top: 20px; width: min(560px, 100%); }
+.demo-grid { display: grid; gap: 10px; grid-template-columns: 1fr; }
+@media (min-width: 640px) { .demo-grid { grid-template-columns: repeat(2, 1fr); } }
+.demo-profile { display: flex; flex-direction: column; gap: 4px; text-align: left; padding: 12px 14px; border-radius: var(--fc-radius-md); border: 1px solid var(--fc-border-strong); background: var(--fc-surface-sunken); color: var(--fc-text); cursor: pointer; font: inherit; }
+.demo-profile:hover:not(:disabled) { border-color: var(--fc-gold-700); }
+.demo-profile:disabled { opacity: 0.6; cursor: wait; }
+.demo-profile span { font-size: 13px; color: var(--fc-text-muted); }
+.demo-profile small { font-size: 12px; color: var(--fc-text-subtle); }

@@ -16,7 +16,7 @@ export default async function ReviewDetailPage({ params }: { params: Promise<{ i
     throw err;
   });
   return (
-    <div className="container" style={{ paddingBlock: "24px", maxWidth: 1040 }}>
+    <div style={{ maxWidth: 1040 }}>
       <ReviewPanel initial={detail} />
     </div>
   );

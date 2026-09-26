@@ -27,6 +27,12 @@ Primeiro administrador (depois de criar a conta pelo site):
 pnpm db:grant-role foccus-car seu@email.com ADMIN
 ```
 
+## Ambiente de testes com dados de demonstração
+
+Locadora fictícia completa (frota, clientes, reservas, locações, financeiro, rastreamento, representantes) e
+um usuário de teste por perfil: `pnpm db:seed:demo`. Para publicar na Vercel + Neon, veja
+[docs/AMBIENTE-DE-TESTES.md](docs/AMBIENTE-DE-TESTES.md).
+
 ## Testes
 
 ```bash
