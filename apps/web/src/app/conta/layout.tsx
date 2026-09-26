@@ -4,5 +4,5 @@ import { AreaLayout } from "@/components/shell/AreaLayout";
 export const dynamic = "force-dynamic";
 
 export default function Layout({ children }: { children: ReactNode }) {
-  return <AreaLayout area="equipe">{children}</AreaLayout>;
+  return <AreaLayout area="cliente">{children}</AreaLayout>;
 }
