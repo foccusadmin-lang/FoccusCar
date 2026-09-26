@@ -43,17 +43,28 @@ export function socialProvidersFromEnv(env: Env): NonNullable<BetterAuthOptions[
   return providers;
 }
 
+/**
+ * Endereço público do app. Na Vercel, sem BETTER_AUTH_URL definido, usa o domínio de produção
+ * do projeto (VERCEL_PROJECT_PRODUCTION_URL), para o ambiente de testes subir sem configuração extra.
+ */
+export function publicBaseUrl(env: Env): string | undefined {
+  if (env.BETTER_AUTH_URL) return env.BETTER_AUTH_URL;
+  if (env.VERCEL_PROJECT_PRODUCTION_URL) return `https://${env.VERCEL_PROJECT_PRODUCTION_URL}`;
+  return undefined;
+}
+
 export function createAuth(opts: { db: Database; env?: Env; mailer?: Mailer }) {
   const env = opts.env ?? process.env;
   const mailer = opts.mailer ?? consoleMailer;
   const db = opts.db;
   const isProd = env.NODE_ENV === "production";
+  const baseURL = publicBaseUrl(env);
 
   return betterAuth({
     appName: "Foccus Car",
-    baseURL: env.BETTER_AUTH_URL,
+    baseURL,
     secret: env.BETTER_AUTH_SECRET,
-    trustedOrigins: [env.BETTER_AUTH_URL ?? "", "https://appleid.apple.com"].filter(Boolean),
+    trustedOrigins: [baseURL ?? "", env.VERCEL_URL ? `https://${env.VERCEL_URL}` : "", "https://appleid.apple.com"].filter(Boolean),
     database: drizzleAdapter(db, {
       provider: "pg",
       schema: { user: users, session: sessions, account: accounts, verification: verifications },
@@ -66,7 +77,8 @@ export function createAuth(opts: { db: Database; env?: Env; mailer?: Mailer }) {
     emailAndPassword: {
       enabled: true,
       minPasswordLength: 10,
-      requireEmailVerification: isProd,
+      // No ambiente de testes (DEMO_MODE) não há provedor de e-mail: contas novas entram sem confirmar.
+      requireEmailVerification: isProd && env.DEMO_MODE !== "true",
       async sendResetPassword({ user, url }) {
         await mailer.send({ to: user.email, subject: "Foccus Car: redefinição de senha", text: `Para criar uma nova senha, acesse: ${url}` });
       },

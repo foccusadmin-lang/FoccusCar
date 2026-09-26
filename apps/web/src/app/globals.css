@@ -229,3 +229,14 @@ fieldset.card legend { padding: 0 8px; color: var(--fc-accent); font-size: 12px;
 .data-table .badge { white-space: nowrap; }
 .data-table td[data-label="KM"], .data-table td[data-label="Diária"], .data-table td[data-label="Placa"] { white-space: nowrap; }
 .table-wrap { width: 100%; overflow-x: auto; }
+
+/* Ambiente de testes: faixa no topo e atalhos de login por perfil (DEMO_MODE=true). */
+.demo-ribbon { background: var(--fc-gold-gradient); color: #111; text-align: center; font-size: 13px; font-weight: 600; padding: 6px var(--fc-gutter); }
+.demo-logins { margin-top: 20px; width: min(560px, 100%); }
+.demo-grid { display: grid; gap: 10px; grid-template-columns: 1fr; }
+@media (min-width: 640px) { .demo-grid { grid-template-columns: repeat(2, 1fr); } }
+.demo-profile { display: flex; flex-direction: column; gap: 4px; text-align: left; padding: 12px 14px; border-radius: var(--fc-radius-md); border: 1px solid var(--fc-border-strong); background: var(--fc-surface-sunken); color: var(--fc-text); cursor: pointer; font: inherit; }
+.demo-profile:hover:not(:disabled) { border-color: var(--fc-gold-700); }
+.demo-profile:disabled { opacity: 0.6; cursor: wait; }
+.demo-profile span { font-size: 13px; color: var(--fc-text-muted); }
+.demo-profile small { font-size: 12px; color: var(--fc-text-subtle); }

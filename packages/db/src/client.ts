@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { drizzle } from "drizzle-orm/postgres-js";
 import { sql } from "drizzle-orm";
 import postgres from "postgres";
@@ -6,11 +7,33 @@ import * as schema from "./schema";
 export type Database = ReturnType<typeof createDb>;
 export type Tx = Parameters<Parameters<Database["transaction"]>[0]>[0];
 
+type Env = Record<string, string | undefined>;
+
+/** Senha do papel `foccus_app` no ambiente de testes, derivada do segredo da aplicação (nunca fica no código). */
+export function derivedAppRolePassword(secret: string) {
+  return createHash("sha256").update(`foccus_app:${secret}`).digest("hex").slice(0, 40);
+}
+
+/**
+ * URL com que a aplicação conecta. Na Vercel com o Postgres da Neon, a integração entrega só a URL do dono
+ * do banco; aqui trocamos o usuário pelo papel `foccus_app` (criado no build por prepare-test-env), para
+ * o isolamento por empresa valer também no ambiente de testes. DATABASE_APP_URL, se definida, tem prioridade.
+ */
+export function appDatabaseUrl(env: Env = process.env) {
+  if (env.DATABASE_APP_URL) return env.DATABASE_APP_URL;
+  const base = env.DATABASE_URL;
+  if (!base || !env.VERCEL || env.DATABASE_APP_ROLE === "owner" || !env.BETTER_AUTH_SECRET) return base;
+  const url = new URL(base);
+  url.username = "foccus_app";
+  url.password = derivedAppRolePassword(env.BETTER_AUTH_SECRET);
+  return url.toString();
+}
+
 /**
  * A aplicação conecta com o papel `foccus_app` (sem superusuário, sujeito a RLS).
  * Migrations usam DATABASE_MIGRATION_URL (dono do schema).
  */
-export function createDb(url = process.env.DATABASE_URL) {
+export function createDb(url = appDatabaseUrl()) {
   if (!url) throw new Error("DATABASE_URL não configurada.");
   const client = postgres(url, { max: Number(process.env.DATABASE_POOL_MAX ?? 10), prepare: false });
   return drizzle(client, { schema, casing: "snake_case" });

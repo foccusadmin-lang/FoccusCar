@@ -111,3 +111,21 @@ body:has(.app-shell) .footer { display: none; }
 
 /* Cabeçalho nas áreas logadas: links sem quebra de linha. */
 .site-header nav a.link { white-space: nowrap; }
+
+/* Consulta com dados reais nos módulos ainda sem tela própria (LiveData) */
+.live-bars { height: 180px; display: flex; align-items: flex-end; gap: 10px; }
+.live-bar { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 6px; min-width: 0; }
+.live-bar-fill { width: 100%; border-radius: 6px 6px 0 0; background: var(--fc-gold-gradient); opacity: 0.85; }
+.live-bar-fill.negative { background: linear-gradient(180deg, #c0504d, #6b2422); }
+.live-bar-value { font-size: 11px; color: var(--fc-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.live-bar-label { font-size: 12px; color: var(--fc-text-subtle); text-transform: capitalize; }
+.live-card-img { width: 100%; aspect-ratio: 16 / 9; object-fit: contain; border-radius: var(--fc-radius-md); background: radial-gradient(circle at 50% 70%, rgba(240, 176, 48, 0.1), transparent 60%), var(--fc-surface-sunken); }
+.live-map { position: relative; display: block; }
+.live-pin { position: absolute; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; border: 2px solid #0a0a0c; background: var(--fc-text-muted); box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.06); }
+.live-pin.success { background: #7fd3a0; } .live-pin.gold { background: var(--fc-accent); } .live-pin.warning { background: #f0c173; }
+.live-pin.danger { background: #f09a97; } .live-pin.info { background: #a8c5ea; }
+.live-map-note { position: absolute; left: 12px; bottom: 10px; display: flex; gap: 6px; align-items: center; font-size: 12px; color: var(--fc-text-subtle); }
+.ghost-list a { color: inherit; }
+
+/* Telas da etapa 3 (sem .page própria) ganham as mesmas margens das demais áreas. */
+.app-main > :not(.page) { width: 100%; max-width: 1200px; margin: 0 auto; padding: 0 var(--fc-gutter); }

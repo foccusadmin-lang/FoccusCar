@@ -1,6 +1,7 @@
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join, resolve, sep } from "node:path";
 import { DeleteObjectCommand, GetObjectCommand, NoSuchKey, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { del as blobDel, get as blobGet, put as blobPut } from "@vercel/blob";
 import { contentTypeFromKey, type StorageProvider, type StoredObject } from "./storage";
 
 function assertSafeKey(key: string) {
@@ -70,6 +71,29 @@ export class S3Storage implements StorageProvider {
   }
 }
 
+/**
+ * Ambiente de testes na Vercel: Vercel Blob com store PRIVADO (docs/AMBIENTE-DE-TESTES.md).
+ * Os arquivos só saem pela rota autenticada da aplicação, como no S3.
+ */
+export class VercelBlobStorage implements StorageProvider {
+  readonly kind = "vercel-blob";
+  constructor(private readonly token: string) {}
+  async put(key: string, bytes: Uint8Array, contentType: string) {
+    assertSafeKey(key);
+    await blobPut(key, Buffer.from(bytes), { access: "private", contentType, addRandomSuffix: false, allowOverwrite: true, token: this.token });
+  }
+  async get(key: string): Promise<StoredObject | null> {
+    assertSafeKey(key);
+    const res = await blobGet(key, { access: "private", token: this.token, useCache: false });
+    if (!res || res.statusCode !== 200) return null;
+    return { bytes: new Uint8Array(await new Response(res.stream).arrayBuffer()), contentType: res.blob.contentType ?? contentTypeFromKey(key) };
+  }
+  async remove(key: string) {
+    assertSafeKey(key);
+    await blobDel(key, { token: this.token });
+  }
+}
+
 /** Testes. */
 export class MemoryStorage implements StorageProvider {
   readonly kind = "memory";
@@ -95,6 +119,7 @@ export function createStorage(env: Record<string, string | undefined> = process.
       accessKeyId: env.STORAGE_ACCESS_KEY,
       secretAccessKey: env.STORAGE_SECRET_KEY,
     });
+  if (env.BLOB_READ_WRITE_TOKEN) return new VercelBlobStorage(env.BLOB_READ_WRITE_TOKEN);
   if (env.NODE_ENV === "production" && env.STORAGE_ALLOW_LOCAL !== "true")
     throw new Error("Storage não configurado: defina STORAGE_BUCKET, STORAGE_ACCESS_KEY e STORAGE_SECRET_KEY.");
   return new LocalDiskStorage(env.STORAGE_LOCAL_DIR ?? ".storage");

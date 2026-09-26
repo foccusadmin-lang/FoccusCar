@@ -4,7 +4,9 @@ import type { ReactNode } from "react";
 import { MODULES, STAGES, type ModuleInfo, type ModuleKey } from "@/lib/modules";
 import { Badge } from "../ui/Badge";
 import { ButtonLink } from "../ui/Button";
+import { getModuleData } from "@/server/module-data";
 import { Icon } from "./Icon";
+import { LiveData } from "./LiveData";
 
 export function moduleMetadata(key: ModuleKey): Metadata {
   return { title: MODULES[key].title };
@@ -24,9 +26,14 @@ export function PageHeader({ eyebrow, title, description, actions }: { eyebrow: 
   );
 }
 
-/** Tela-esqueleto de um módulo ainda não implementado: formato da tela + o que ela terá. */
-export function ModulePage({ id }: { id: ModuleKey }) {
+/**
+ * Tela de um módulo ainda não implementado: formato da tela + o que ela terá.
+ * Quando já existem registros no banco, mostra os dados reais em modo consulta.
+ */
+export async function ModulePage({ id }: { id: ModuleKey }) {
   const m: ModuleInfo = MODULES[id];
+  const data = await getModuleData(id);
+  const live = data && data !== "denied" ? data : null;
   return (
     <div className="page">
       <PageHeader
@@ -49,15 +56,19 @@ export function ModulePage({ id }: { id: ModuleKey }) {
       <div className="module-notice card">
         <Icon name="lock" />
         <div className="stack" style={{ gap: 2 }}>
-          <strong>Módulo em construção</strong>
+          <strong>{data === "denied" ? "Seu perfil não acessa este módulo" : live ? "Consulta liberada" : "Módulo em construção"}</strong>
           <span className="muted">
-            {m.stage ? <>Chega na etapa {m.stage} do plano: {STAGES[m.stage]}.</> : "Esta tela evolui junto com os módulos relacionados."}
+            {data === "denied"
+              ? "Peça a um administrador para ajustar suas permissões."
+              : live
+                ? m.stage ? <>Você já vê os registros reais. Cadastrar e editar por aqui chega na etapa {m.stage}: {STAGES[m.stage]}.</> : "Você já vê os registros reais. As ações evoluem junto com os módulos relacionados."
+                : m.stage ? <>Chega na etapa {m.stage} do plano: {STAGES[m.stage]}.</> : "Esta tela evolui junto com os módulos relacionados."}
           </span>
         </div>
         {m.stage && <Badge tone="gold" plain>Etapa {m.stage}</Badge>}
       </div>
 
-      <Preview m={m} />
+      {live ? <LiveData data={live} /> : data !== "denied" && <Preview m={m} />}
 
       <section className="card card-pad stack" style={{ gap: 12 }} aria-labelledby={`feat-${id}`}>
         <h2 id={`feat-${id}`} style={{ fontSize: 18 }}>O que vai ter aqui</h2>
