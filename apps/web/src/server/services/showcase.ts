@@ -36,7 +36,8 @@ export interface ShowcaseVehicle {
   status: string;
   available: boolean;
   nextAvailableAt: string | null;
-  coverKey: string | null;
+  coverUrl: string | null;
+  photoUrls: string[];
   features: string[];
 }
 
@@ -86,7 +87,7 @@ export async function listShowcase(companyId: string, filters: ShowcaseFilters, 
             .where(and(inArray(rentals.vehicleId, ids), inArray(rentals.status, [...BUSY_RENTAL]), or(isNull(rentals.actualReturnAt), gte(rentals.expectedReturnAt, now))))
         : [],
       ids.length
-        ? tx.select().from(vehiclePhotos).where(and(inArray(vehiclePhotos.vehicleId, ids), eq(vehiclePhotos.isCover, true), eq(vehiclePhotos.isPublic, true)))
+        ? tx.select({ id: vehiclePhotos.id, vehicleId: vehiclePhotos.vehicleId, isCover: vehiclePhotos.isCover }).from(vehiclePhotos).where(and(inArray(vehiclePhotos.vehicleId, ids), eq(vehiclePhotos.isPublic, true), isNull(vehiclePhotos.deletedAt))).orderBy(desc(vehiclePhotos.isCover), asc(vehiclePhotos.position))
         : [],
       tx.select({ slug: vehicleCategories.slug, name: vehicleCategories.name }).from(vehicleCategories).where(isNull(vehicleCategories.deletedAt)).orderBy(asc(vehicleCategories.name)),
     ]);
@@ -115,7 +116,8 @@ export async function listShowcase(companyId: string, filters: ShowcaseFilters, 
         status: v.status,
         available,
         nextAvailableAt: available ? null : next.toISOString(),
-        coverKey: covers.find((c) => c.vehicleId === v.id)?.storageKey ?? null,
+        coverUrl: covers.find((c) => c.vehicleId === v.id && c.isCover) ? `/api/vehicle-photos/${covers.find((c) => c.vehicleId === v.id && c.isCover)!.id}` : null,
+        photoUrls: covers.filter((c) => c.vehicleId === v.id).map((c) => `/api/vehicle-photos/${c.id}`),
         features: v.features,
       };
     });

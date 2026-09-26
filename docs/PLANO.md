@@ -6,7 +6,7 @@ Segue a ordem da seção 119, agrupada em entregas que sempre deixam o sistema f
 |---|---|---|---|
 | 1 | **Fundação** ✅ | Arquitetura, banco completo (65 tabelas) com RLS, login (Google/Microsoft/Apple/e-mail), RBAC, tokens da marca, vitrine inicial, bloqueio de serviços, PWA básico | 1–21, 86–89, 95 |
 | 2 | **Cadastro do cliente** ✅ | Formulário completo (dados, endereço, CNH), upload de documentos com câmera, análise pelo operador, PROFILE_COMPLETE → UNDER_REVIEW → ACTIVE, recuperação de senha, notificação por e-mail | 18, 21–24, 82–83, 99 |
-| 3 | Painel administrativo e frota | Layout com sidebar (seção 92), usuários e perfis, cadastro de veículos com fotos, documentos da frota, Vida do Veículo, auditoria automática | 29–31, 69, 74, 80, 92, 104 |
+| 3 | **Painel administrativo e frota** ✅ | Layout com sidebar (seção 92), usuários e perfis, cadastro de veículos com fotos, documentos da frota, Vida do Veículo, auditoria automática | 29–31, 69, 74, 80, 92, 104 |
 | 4 | Reserva → contrato → pagamento | Calendário de disponibilidade, criação de reserva sem conflito, contrato em PDF com assinatura, Pix/cartão/link, webhooks idempotentes, caução, confirmação | 25–27, 32–37, 48–54 |
 | 5 | Locação: retirada e devolução | Condutores, checklist mobile (KM, combustível, 23 itens, fotos, assinatura), comparação saída x devolução, avarias, encargos, finalização, preparação do veículo, offline para checklist | 34–43, 55, 85, 98 |
 | 6 | Manutenção, multas e ocorrências | Manutenção GREEN/YELLOW/RED, multas com condutor, ocorrências, alertas de vencimento | 44–45, 72–74 |

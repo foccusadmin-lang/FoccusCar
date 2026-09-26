@@ -1,6 +1,6 @@
-import Image from "next/image";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/Badge";
+import { Gallery } from "@/components/Gallery";
 import { ReserveButton } from "@/components/ReserveButton";
 import { FUEL_LABEL, TRANSMISSION_LABEL, formatCents, formatDate } from "@/lib/format";
 import { vehicleImage } from "@/lib/vehicle-image";
@@ -24,11 +24,7 @@ export default async function VehiclePage({ params }: { params: Promise<{ id: st
   return (
     <div className="container detail">
       <section className="stack" style={{ gap: 20 }}>
-        <div className="card" style={{ overflow: "hidden" }}>
-          <div className="vehicle-media">
-            <Image src={vehicleImage(v.coverKey, v.color)} alt={`${v.title} ${v.modelYear}`} fill priority sizes="(max-width: 960px) 100vw, 60vw" />
-          </div>
-        </div>
+        <Gallery photos={v.photoUrls} fallback={vehicleImage(null, v.color)} alt={`${v.title} ${v.modelYear}`} />
         <div className="stack" style={{ gap: 6 }}>
           <span className="eyebrow">{v.category ?? "Veículo"}</span>
           <h1 className="display" style={{ fontSize: "clamp(28px, 5vw, 42px)" }}>{v.title}</h1>

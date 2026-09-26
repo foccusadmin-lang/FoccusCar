@@ -14,7 +14,7 @@ export default async function ReviewQueuePage() {
   const ctx = await requirePagePermission("customers:documents.review", "/admin/cadastros");
   const queue = await listReviewQueue(deps, ctx);
   return (
-    <div className="container" style={{ paddingBlock: "24px", maxWidth: 960 }}>
+    <div style={{ maxWidth: 960 }}>
       <div className="stack" style={{ gap: 20 }}>
         <div className="stack" style={{ gap: 4 }}>
           <span className="eyebrow">Clientes</span>

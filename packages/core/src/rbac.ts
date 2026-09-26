@@ -111,3 +111,33 @@ export function canAssignRole(params: {
     return { allowed: false, reason: "Somente administradores podem conceder o perfil de administrador." };
   return { allowed: true };
 }
+
+export const ROLE_LABELS: Record<Role, string> = {
+  CLIENTE: "Cliente",
+  REPRESENTANTE: "Representante",
+  OPERADOR: "Operador",
+  FINANCEIRO: "Financeiro",
+  GERENTE: "Gerente",
+  ADMIN: "Administrador",
+};
+
+/** Permissões que dão acesso ao painel administrativo (qualquer uma basta). */
+const ADMIN_AREA: Permission[] = ["vehicles:view", "customers:view", "finance:view", "users:view", "audit:view"];
+
+export function canAccessAdmin(granted: ReadonlySet<Permission>): boolean {
+  return ADMIN_AREA.some((p) => granted.has(p));
+}
+
+/**
+ * Retirada de perfil: mesmas regras da atribuição, mais duas travas —
+ * o perfil CLIENTE é a base de toda conta e a empresa nunca fica sem administrador.
+ */
+export function canRevokeRole(params: Parameters<typeof canAssignRole>[0] & { remainingAdmins: number }):
+  { allowed: true } | { allowed: false; reason: string } {
+  const base = canAssignRole(params);
+  if (!base.allowed) return base;
+  if (params.role === "CLIENTE") return { allowed: false, reason: "O perfil Cliente é a base de toda conta e não pode ser retirado." };
+  if (params.role === "ADMIN" && params.remainingAdmins <= 1)
+    return { allowed: false, reason: "A empresa precisa de pelo menos um administrador." };
+  return { allowed: true };
+}

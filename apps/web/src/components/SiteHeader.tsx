@@ -1,3 +1,4 @@
+import { canAccessAdmin } from "@foccus/core";
 import { getAccess, getSession } from "@/server/auth";
 import { ButtonLink } from "./ui/Button";
 import { Logo } from "./Logo";
@@ -13,7 +14,7 @@ export async function SiteHeader() {
           <a className="link hide-sm" href="/#frota">Veículos</a>
           {session ? (
             <>
-              {access?.permissions.has("customers:documents.review") && <a className="link" href="/admin/cadastros">Análise</a>}
+              {access && (canAccessAdmin(access.permissions) || access.permissions.has("customers:documents.review")) && <a className="link" href="/admin">Painel</a>}
               <a className="link" href="/cadastro">Minha conta</a>
             </>
           ) : (
