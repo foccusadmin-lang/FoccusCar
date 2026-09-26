@@ -7,3 +7,4 @@ export * from "./payments/factory";
 export * from "./telematics/adapter";
 export * from "./storage/storage";
 export * from "./notifications/channels";
+export * from "./storage/providers";

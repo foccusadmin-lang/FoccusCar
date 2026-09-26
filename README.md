@@ -42,6 +42,7 @@ pnpm typecheck
 | `apps/web` | Next.js: vitrine, login, cadastro, rotas `/api`, PWA |
 | `packages/core` | Regras de negócio: perfis, permissões, status, elegibilidade, reservas |
 | `packages/db` | Esquema (65 tabelas), migrations, RLS, seed |
+| `packages/services` | Casos de uso do backend: cadastro do cliente, documentos, análise |
 | `packages/auth` | Better Auth: Google, Microsoft, Apple, e-mail/senha |
 | `packages/integrations` | Pagamentos (Mercado Pago, Asaas), telemetria, storage, notificações |
 | `packages/ui` | Tokens do design system derivados da logo |

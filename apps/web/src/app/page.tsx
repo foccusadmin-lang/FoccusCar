@@ -16,7 +16,7 @@ export default async function ShowcasePage({ searchParams }: { searchParams: Pro
 
   if (!company)
     return (
-      <div className="container" style={{ padding: "48px 0" }}>
+      <div className="container" style={{ paddingBlock: "48px" }}>
         <EmptyState title="Locadora não configurada" description="Este endereço ainda não está vinculado a nenhuma locadora. Verifique a configuração do domínio." />
       </div>
     );

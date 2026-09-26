@@ -10,7 +10,7 @@ const securityHeaders = [
 ];
 
 const config: NextConfig = {
-  transpilePackages: ["@foccus/core", "@foccus/db", "@foccus/auth", "@foccus/integrations", "@foccus/ui"],
+  transpilePackages: ["@foccus/core", "@foccus/db", "@foccus/auth", "@foccus/integrations", "@foccus/ui", "@foccus/services"],
   poweredByHeader: false,
   images: { formats: ["image/avif", "image/webp"] },
   async headers() {

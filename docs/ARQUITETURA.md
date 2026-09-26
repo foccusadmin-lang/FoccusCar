@@ -61,6 +61,7 @@ foccus-car/
 │   │   ├── migrations/           SQL gerado e versionado
 │   │   └── sql/policies.sql      RLS, anti-conflito, imutabilidade, permissões
 │   ├── auth/                     Better Auth + vínculo com empresa + contexto de acesso
+│   ├── services/                 casos de uso do backend (cadastro, análise), testados contra o Postgres
 │   ├── integrations/             pagamentos, telemetria, storage, notificações
 │   └── ui/                       tokens do design system (cores da logo)
 └── docs/                         esta documentação
@@ -198,3 +199,21 @@ Paleta amostrada da logo (dourado `#F0B030 / #E09020 / #D08010`, preto, prata do
 - 47 testes automatizados: regras de perfil, autorização, status, elegibilidade, conflito e preço de reservas, checklist, CPF, isolamento entre empresas no Postgres real, reservas sobrepostas recusadas pelo banco, auditoria e financeiro imutáveis, cadastro público sem escalonamento, gateways e bloqueio remoto.
 - Build de produção do Next.js sem erros.
 - Fluxo no navegador em celular (390 px), tablet (820 px) e desktop (1440 px), sem rolagem horizontal: vitrine → veículo → "Reservar" → login → criar conta → confirmar e-mail → cadastro incompleto → tentar reservar → **bloqueio "Complete seu cadastro para continuar." com COMPLETAR CADASTRO**.
+
+---
+
+## 11. Etapa 2: cadastro do cliente (concluída)
+
+**Fluxo do cliente (`/cadastro`):** formulário em 5 passos (dados pessoais, endereço com CEP automático via ViaCEP, CNH, documentos, revisão). Documentos pelo celular: "Tirar foto" abre a câmera traseira (a frontal na selfie), a foto é comprimida no aparelho (até 1600 px, JPEG) e enviada. Documentos exigidos por padrão: CNH frente e verso, selfie e comprovante de residência (RG opcional); cada empresa pode ajustar em `companies.settings.requiredDocuments`.
+
+**Status:** `PROFILE_INCOMPLETE` → (enviar) `PROFILE_COMPLETE` → `UNDER_REVIEW` → (equipe libera) `ACTIVE`. Documento recusado volta a conta para `PROFILE_INCOMPLETE`, com o motivo visível ao cliente e enviado por e-mail. Depois do envio, nome, CPF, nascimento e CNH ficam travados; contato e endereço seguem editáveis.
+
+**Análise pela equipe (`/admin/cadastros`):** fila por ordem de envio, fotos em tamanho real, aprovar ou recusar cada documento (recusa exige motivo) e "Liberar conta", tudo com confirmação (seção 104). Só libera com todos os obrigatórios aprovados e CNH válida. Ninguém analisa o próprio cadastro. Cada ação grava auditoria (quem, quando, valor anterior e novo, IP) e notificação para o cliente.
+
+**Arquivos:** servidor confere tipo, tamanho, extensão e o conteúdo real do arquivo; chave `companies/{empresa}/customers/{cliente}/documents/{id}.jpg`. Entrega por `/api/documents/{id}/file`, só para o dono ou quem tem `customers:documents.review`, sem cache. Em produção: bucket S3/R2 privado (`STORAGE_*`); em desenvolvimento, pasta local.
+
+**Senha:** "Esqueci minha senha" envia link de uso único (1 hora); a resposta é a mesma exista ou não a conta.
+
+**APIs novas:** `GET/PUT /api/me/profile`, `POST /api/me/documents`, `POST /api/me/submit`, `GET /api/documents/{id}/file`, `POST /api/documents/{id}/review`, `GET /api/customers/review`, `GET /api/customers/{id}/detail`, `POST /api/customers/{id}/approve`.
+
+**Validado:** 50 testes automáticos (3 novos de integração cobrindo o fluxo completo, recusa e reenvio, CPF duplicado, arquivo falso, acesso a arquivo de outra pessoa e de outra empresa) e o fluxo no navegador: cliente no celular preenche e envia, operadora no computador recusa a selfie, cliente vê o motivo e reenvia, operadora aprova e libera, cliente consegue reservar; cliente é barrado na área de análise (API responde 403); recuperação de senha e login com a nova senha.

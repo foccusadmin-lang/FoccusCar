@@ -111,6 +111,7 @@ export function LoginPanel({ providers, next }: { providers: Providers; next: st
         <div className="field">
           <label htmlFor="password">Senha</label>
           <input id="password" name="password" type="password" className="input" autoComplete={mode === "signin" ? "current-password" : "new-password"} required minLength={10} />
+          {mode === "signin" && <a href="/recuperar-senha" style={{ fontSize: 14, color: "var(--fc-accent)", alignSelf: "flex-end", paddingBlock: "6px" }}>Esqueci minha senha</a>}
         </div>
         <Button type="submit" size="lg" block variant={anySocial ? "secondary" : "primary"} disabled={loading} aria-busy={loading}>
           {loading ? "Aguarde…" : mode === "signin" ? "Entrar com e-mail" : "Criar conta"}

@@ -1,12 +1,17 @@
 /**
- * Storage de arquivos (seção 82): S3/R2/GCS compatível. O banco guarda só a chave.
- * Uploads vão direto do navegador ao storage via URL assinada de curta duração.
+ * Storage de arquivos (seção 82): disco local em desenvolvimento, S3/R2/MinIO em produção.
+ * O banco guarda só a chave. Arquivos privados (documentos) nunca ficam em pasta pública:
+ * são entregues por rota autenticada que confere o dono ou a permissão de análise.
  */
+export interface StoredObject {
+  bytes: Uint8Array;
+  contentType: string;
+}
+
 export interface StorageProvider {
-  createUploadUrl(input: { key: string; contentType: string; maxBytes: number; expiresInSeconds?: number }): Promise<{ url: string; fields?: Record<string, string> }>;
-  createDownloadUrl(key: string, expiresInSeconds?: number): Promise<string>;
-  head(key: string): Promise<{ sizeBytes: number; contentType: string } | null>;
-  readFirstBytes(key: string, length: number): Promise<Uint8Array>;
+  readonly kind: string;
+  put(key: string, bytes: Uint8Array, contentType: string): Promise<void>;
+  get(key: string): Promise<StoredObject | null>;
   remove(key: string): Promise<void>;
 }
 
@@ -47,4 +52,9 @@ export function validateUploadRequest(kind: UploadKind, file: { name: string; co
 export function buildStorageKey(companyId: string, area: string, id: string, contentType: string): string {
   const ext = EXTENSIONS[contentType]?.[0] ?? "bin";
   return `companies/${companyId}/${area}/${id}.${ext}`;
+}
+
+export function contentTypeFromKey(key: string): string {
+  const ext = key.split(".").pop()?.toLowerCase() ?? "";
+  return Object.entries(EXTENSIONS).find(([, exts]) => exts.includes(ext))?.[0] ?? "application/octet-stream";
 }

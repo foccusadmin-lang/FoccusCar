@@ -1,9 +1,10 @@
-import { getSession } from "@/server/auth";
+import { getAccess, getSession } from "@/server/auth";
 import { ButtonLink } from "./ui/Button";
 import { Logo } from "./Logo";
 
 export async function SiteHeader() {
   const session = await getSession();
+  const access = session ? await getAccess() : null;
   return (
     <header className="site-header">
       <div className="container inner">
@@ -12,6 +13,7 @@ export async function SiteHeader() {
           <a className="link hide-sm" href="/#frota">Veículos</a>
           {session ? (
             <>
+              {access?.permissions.has("customers:documents.review") && <a className="link" href="/admin/cadastros">Análise</a>}
               <a className="link" href="/cadastro">Minha conta</a>
             </>
           ) : (

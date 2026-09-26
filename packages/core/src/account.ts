@@ -58,3 +58,41 @@ export function checkServiceAccess(status: AccountStatus): ServiceGate {
       return { allowed: false, code: "RESTRICTED", message: "Sua conta está com acesso restrito. Fale com a locadora." };
   }
 }
+
+/** Documentos exigidos por padrão; cada empresa pode ajustar em companies.settings.requiredDocuments. */
+export const DEFAULT_REQUIRED_DOCUMENTS = ["CNH_FRONT", "CNH_BACK", "SELFIE", "PROOF_OF_ADDRESS"] as const;
+
+export const DOCUMENT_LABELS: Record<string, string> = {
+  CNH_FRONT: "CNH (frente)",
+  CNH_BACK: "CNH (verso)",
+  RG: "RG",
+  PROOF_OF_ADDRESS: "Comprovante de residência",
+  SELFIE: "Selfie",
+  OTHER: "Outro documento",
+};
+
+export interface ProfileProgressInput {
+  profileSaved: boolean;
+  documents: readonly { type: string; status: string }[];
+  required: readonly string[];
+}
+
+/** O que falta para o cadastro ficar completo e ser aprovado (seções 18, 21 e 23). */
+export function profileProgress({ profileSaved, documents, required }: ProfileProgressInput) {
+  const current = new Map(documents.map((d) => [d.type, d.status]));
+  const missingDocuments = required.filter((t) => !current.has(t) || current.get(t) === "EXPIRED");
+  const rejectedDocuments = required.filter((t) => current.get(t) === "REJECTED");
+  const approvedAll = required.every((t) => current.get(t) === "APPROVED");
+  return {
+    profileSaved,
+    missingDocuments,
+    rejectedDocuments,
+    readyToSubmit: profileSaved && missingDocuments.length === 0 && rejectedDocuments.length === 0,
+    allRequiredApproved: approvedAll,
+  };
+}
+
+/** Após enviar para análise, dados de identidade e CNH ficam travados (alteração só pela locadora). */
+export function isIdentityLocked(status: AccountStatus): boolean {
+  return status === "UNDER_REVIEW" || status === "ACTIVE" || status === "PROFILE_COMPLETE";
+}
