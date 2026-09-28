@@ -12,7 +12,7 @@ Segue a ordem da seção 119, agrupada em entregas que sempre deixam o sistema f
 | 6 | Manutenção, multas e ocorrências | Manutenção GREEN/YELLOW/RED, multas com condutor, ocorrências, alertas de vencimento | 44–45, 72–74 |
 | 7 | Financeiro | Receitas/despesas, rentabilidade por veículo, contas bancárias, conciliação Foccus x gateway x banco | 46–47, 56–57 |
 | 8 | Representantes | Ofertas com margem, carteira, saques, painel do representante (Foccus Invest só com integração regulada) | 64–68, 90, 94 |
-| 9 | GPS e Foccus Security | Adapter do rastreador escolhido, mapa da frota, histórico, cercas, central de alertas, bloqueio seguro | 58–63, 70, 97, 114 |
+| 9 | GPS e Foccus Security | Adapter do rastreador escolhido, alertas do cruzamento carro x celular, mapa da frota, histórico, cercas, central de alertas, bloqueio seguro | 58–63, 70, 97, 114 |
 | 10 | Notificações e WhatsApp | Central, e-mail, WhatsApp oficial, push PWA, lembretes automáticos (worker) | 75–77 |
 | 11 | Relatórios e Foccus Intelligence | Relatórios de frota, financeiro, clientes, segurança; alertas inteligentes | 77, 79 |
 | 12 | Produção | Staging e produção separados, backups com restauração testada, monitoramento, testes E2E completos (seções 111–114) | 110, 115–118 |
@@ -20,7 +20,9 @@ Segue a ordem da seção 119, agrupada em entregas que sempre deixam o sistema f
 ## Decisões pendentes com o dono do produto
 
 1. **Gateway de pagamento principal:** Mercado Pago ou Asaas (ambos preparados).
-2. **Fornecedor de rastreador/telemetria** (define o que é possível em bloqueio remoto).
+2. **Fornecedor de rastreador/telemetria** (define o que é possível em bloqueio remoto). A localização do celular já está pronta como segunda camada (docs/ARQUITETURA.md, seção 13).
+6. **Publicação do app** na Google Play (US$ 25, uma vez) e na App Store (US$ 99 por ano), necessária para a localização em segundo plano.
+7. **Prazo de retenção das posições** (celular e rastreador) para constar no contrato e na política de privacidade.
 3. **Domínio** (ex.: app.foccuscar.com.br) e **hospedagem**.
 4. **Contas de desenvolvedor** Google Cloud, Microsoft Entra e Apple Developer para ativar os logins sociais.
 5. **Revisão de cadastro:** aprovação manual pelo operador ou automática quando documentos forem validados.

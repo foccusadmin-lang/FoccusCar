@@ -103,6 +103,7 @@ export function ReviewPanel({ initial }: { initial: Detail }) {
             <dt>Endereço</dt><dd>{d.customer.address}</dd>
             <dt>CNH</dt><dd>{d.cnh ? `${d.cnh.number} · ${d.cnh.categories}` : "—"}</dd>
             <dt>Validade CNH</dt><dd style={cnhExpired ? { color: "#f09a97" } : undefined}>{d.cnh?.expiresAt?.split("-").reverse().join("/") ?? "—"}{cnhExpired ? " (vencida)" : ""}</dd>
+            <dt>Localização</dt><dd style={d.tracking ? undefined : { color: "#f09a97" }}>{d.tracking ? `Autorizada em ${new Date(d.tracking.acceptedAt).toLocaleDateString("pt-BR")} (${d.tracking.platform === "WEB" ? "navegador" : d.tracking.platform === "ANDROID" ? "app Android" : "app iPhone"})` : "Não autorizada"}</dd>
           </dl>
           <p className="muted" style={{ margin: 0, fontSize: 14 }}>Confira se nome, CPF e CNH conferem com as fotos e se a selfie corresponde à CNH.</p>
           {d.account.status === "UNDER_REVIEW" && (

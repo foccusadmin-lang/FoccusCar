@@ -11,11 +11,12 @@ import { Badge } from "../ui/Badge";
 import { Button } from "../ui/Button";
 import { Stepper } from "../ui/Stepper";
 import { DocumentsStep } from "./DocumentsStep";
+import { LocationStep } from "./LocationStep";
 
 type Fields = Record<string, string>;
 type Errors = Record<string, string>;
 
-const STEPS = ["Dados pessoais", "Endereço", "CNH", "Documentos", "Revisão"] as const;
+const STEPS = ["Dados pessoais", "Endereço", "CNH", "Documentos", "Localização", "Revisão"] as const;
 const CNH_CATEGORIES = ["A", "B", "AB", "C", "D", "E", "AC", "AD", "AE", "ACC"];
 const UFS = "AC AL AP AM BA CE DF ES GO MA MT MS MG PA PB PR PE PI RJ RN RS RO RR SC SP SE TO".split(" ");
 
@@ -49,7 +50,9 @@ function Field(props: { id: string; label: string; error?: string; hint?: string
 export function ProfileWizard({ initial }: { initial: MyProfile }) {
   const [profile, setProfile] = useState(initial);
   const locked = profile.identityLocked;
-  const firstStep = profile.status === "UNDER_REVIEW" || profile.status === "ACTIVE" ? 4 : !profile.progress.profileSaved ? 0 : 3;
+  const firstStep = profile.status === "UNDER_REVIEW" || profile.status === "ACTIVE"
+    ? (profile.progress.trackingConsent ? 5 : 4)
+    : !profile.progress.profileSaved ? 0 : profile.progress.documentsReady ? 4 : 3;
   const [step, setStep] = useState(firstStep);
   const [errors, setErrors] = useState<Errors>({});
   const [message, setMessage] = useState<{ tone: "danger" | "success"; text: string } | null>(null);
@@ -86,6 +89,7 @@ export function ProfileWizard({ initial }: { initial: MyProfile }) {
       Object.keys(validate(addressSchema, address)).length === 0,
       profile.progress.profileSaved,
       profile.progress.missingDocuments.length === 0 && profile.progress.rejectedDocuments.length === 0,
+      profile.progress.trackingConsent,
       profile.status === "UNDER_REVIEW" || profile.status === "ACTIVE",
     ],
     [personal, address, profile, sameWhatsapp],
@@ -319,13 +323,28 @@ export function ProfileWizard({ initial }: { initial: MyProfile }) {
             <DocumentsStep profile={profile} onChange={setProfile} />
             <div className="actions-bar">
               <Button variant="ghost" onClick={() => go(2)}>Voltar</Button>
-              <Button size="lg" onClick={() => go(4)} disabled={!done[3]}>Revisar e enviar</Button>
+              <Button size="lg" onClick={() => go(4)} disabled={!done[3]}>Continuar</Button>
             </div>
           </>
         )}
 
         {step === 4 && (
           <>
+            <LocationStep profile={profile} onChange={setProfile} />
+            <div className="actions-bar">
+              <Button variant="ghost" onClick={() => go(3)}>Voltar</Button>
+              <Button size="lg" onClick={() => go(5)} disabled={!done[4]}>Revisar e enviar</Button>
+            </div>
+          </>
+        )}
+
+        {step === 5 && (
+          <>
+            {!profile.progress.trackingConsent && (
+              <Alert tone="warning" title="Falta autorizar a localização">
+                O rastreamento pelo veículo e pelo celular é obrigatório para alugar. <button type="button" onClick={() => go(4)} style={{ background: "none", border: 0, padding: 0, color: "var(--fc-accent)", fontWeight: 600, cursor: "pointer" }}>Ativar agora</button>
+              </Alert>
+            )}
             <div className="summary stack" style={{ gap: 16 }}>
               <dl>
                 <dt>Nome</dt><dd>{profile.personal?.fullName ?? "—"}</dd>
@@ -340,11 +359,12 @@ export function ProfileWizard({ initial }: { initial: MyProfile }) {
                   const tone = d?.status === "APPROVED" ? "success" : d?.status === "REJECTED" ? "danger" : d ? "info" : "warning";
                   return <Badge key={r.type} tone={tone}>{r.label}</Badge>;
                 })}
+                <Badge tone={profile.progress.trackingConsent ? "success" : "warning"}>Localização</Badge>
               </div>
             </div>
             {(profile.status === "PROFILE_INCOMPLETE" || profile.status === "REGISTERED" || profile.status === "PROFILE_COMPLETE") && (
               <div className="actions-bar">
-                <Button variant="ghost" onClick={() => go(3)}>Voltar</Button>
+                <Button variant="ghost" onClick={() => go(4)}>Voltar</Button>
                 <Button size="lg" onClick={submit} disabled={busy || !profile.progress.readyToSubmit} aria-busy={busy}>
                   {busy ? "Enviando…" : "Enviar para análise"}
                 </Button>

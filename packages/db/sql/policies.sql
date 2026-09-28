@@ -75,6 +75,22 @@ DROP TRIGGER IF EXISTS financial_transactions_protect ON financial_transactions;
 CREATE TRIGGER financial_transactions_protect BEFORE UPDATE OR DELETE ON financial_transactions
   FOR EACH ROW EXECUTE FUNCTION protect_confirmed_financial();
 
+-- Aceites LGPD: prova do consentimento. Só a retirada (revoked_at) pode ser registrada, uma única vez.
+CREATE OR REPLACE FUNCTION protect_consent() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  IF TG_OP = 'DELETE' THEN
+    RAISE EXCEPTION 'Aceite LGPD não pode ser apagado: registre a retirada.' USING ERRCODE = 'P0001';
+  END IF;
+  IF OLD.revoked_at IS NOT NULL OR NEW.revoked_at IS NULL
+     OR (to_jsonb(NEW) - 'revoked_at' - 'updated_at') IS DISTINCT FROM (to_jsonb(OLD) - 'revoked_at' - 'updated_at') THEN
+    RAISE EXCEPTION 'Aceite LGPD é imutável: apenas a retirada pode ser registrada.' USING ERRCODE = 'P0001';
+  END IF;
+  RETURN NEW;
+END $$;
+DROP TRIGGER IF EXISTS consents_protect ON consents;
+CREATE TRIGGER consents_protect BEFORE UPDATE OR DELETE ON consents
+  FOR EACH ROW EXECUTE FUNCTION protect_consent();
+
 -- 4) Papel usado pela aplicação: sem superusuário, sujeito a RLS.
 DO $$
 BEGIN
@@ -83,7 +99,8 @@ BEGIN
     GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO foccus_app;
     GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO foccus_app;
     REVOKE UPDATE, DELETE ON audit_logs, vehicle_events, payment_events, vehicle_history FROM foccus_app;
-    REVOKE DELETE ON financial_transactions FROM foccus_app;
+    REVOKE DELETE ON financial_transactions, consents FROM foccus_app;
+    REVOKE UPDATE, DELETE ON customer_locations FROM foccus_app;
     REVOKE ALL ON drizzle.__drizzle_migrations FROM foccus_app;
   END IF;
 END $$;

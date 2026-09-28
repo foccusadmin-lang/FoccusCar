@@ -75,10 +75,12 @@ export interface ProfileProgressInput {
   profileSaved: boolean;
   documents: readonly { type: string; status: string }[];
   required: readonly string[];
+  /** Aceite LGPD de localização + permissão do aparelho concedida (obrigatório para concluir). */
+  trackingConsent: boolean;
 }
 
 /** O que falta para o cadastro ficar completo e ser aprovado (seções 18, 21 e 23). */
-export function profileProgress({ profileSaved, documents, required }: ProfileProgressInput) {
+export function profileProgress({ profileSaved, documents, required, trackingConsent }: ProfileProgressInput) {
   const current = new Map(documents.map((d) => [d.type, d.status]));
   const missingDocuments = required.filter((t) => !current.has(t) || current.get(t) === "EXPIRED");
   const rejectedDocuments = required.filter((t) => current.get(t) === "REJECTED");
@@ -87,7 +89,9 @@ export function profileProgress({ profileSaved, documents, required }: ProfilePr
     profileSaved,
     missingDocuments,
     rejectedDocuments,
-    readyToSubmit: profileSaved && missingDocuments.length === 0 && rejectedDocuments.length === 0,
+    documentsReady: profileSaved && missingDocuments.length === 0 && rejectedDocuments.length === 0,
+    trackingConsent,
+    readyToSubmit: profileSaved && missingDocuments.length === 0 && rejectedDocuments.length === 0 && trackingConsent,
     allRequiredApproved: approvedAll,
   };
 }
