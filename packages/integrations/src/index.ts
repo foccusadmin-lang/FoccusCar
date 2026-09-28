@@ -8,3 +8,6 @@ export * from "./telematics/adapter";
 export * from "./storage/storage";
 export * from "./notifications/channels";
 export * from "./storage/providers";
+export * from "./telematics/fake";
+export * from "./telematics/factory";
+export * from "./telematics/phone";

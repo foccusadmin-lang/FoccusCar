@@ -9,3 +9,4 @@ export * from "./payments";
 export * from "./finance";
 export * from "./representatives";
 export * from "./platform";
+export * from "./privacy";

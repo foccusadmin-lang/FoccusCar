@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import {
   DEFAULT_REQUIRED_DOCUMENTS, CUSTOMER_DOCUMENT_TYPES, DOCUMENT_LABELS, addressSchema, assertTransition, authorize,
-  cnhSchema, isIdentityLocked, personalSchema, profileProgress, type AccessContext, type AccountStatus, type CustomerDocumentType,
+  TRACKING_CONSENT_TEXT, TRACKING_CONSENT_TITLE, TRACKING_CONSENT_VERSION, cnhSchema, isIdentityLocked, personalSchema, profileProgress, type AccessContext, type AccountStatus, type CustomerDocumentType,
 } from "@foccus/core";
 import { companies, customerDocuments, customers, drivers, users, withTenant, type Tx } from "@foccus/db";
 import { buildStorageKey, sniffMime, validateUploadRequest } from "@foccus/integrations";
@@ -9,6 +9,7 @@ import { and, desc, eq, isNull, ne } from "drizzle-orm";
 import { z } from "zod";
 import { audit, notify } from "./audit";
 import { ServiceError, type RequestMeta, type ServiceDeps } from "./deps";
+import { activeTrackingConsent } from "./tracking";
 
 const toDateString = (d: Date) => d.toISOString().slice(0, 10);
 
@@ -71,6 +72,8 @@ export async function getMyProfile(deps: ServiceDeps, ctx: AccessContext) {
       : [];
     const docs = customer ? await currentDocuments(tx, customer.id) : [];
     const required = await requiredDocuments(tx, ctx.companyId);
+    const consent = await activeTrackingConsent(tx, ctx.companyId, ctx.userId);
+    const trackingConsent = consent?.version === TRACKING_CONSENT_VERSION;
     return {
       status,
       identityLocked: isIdentityLocked(status),
@@ -86,7 +89,11 @@ export async function getMyProfile(deps: ServiceDeps, ctx: AccessContext) {
         : null,
       documents: maskedDocuments(docs),
       requiredDocuments: required.map((type) => ({ type, label: DOCUMENT_LABELS[type] ?? type })),
-      progress: profileProgress({ profileSaved: Boolean(customer?.zip && driver?.cnhNumber), documents: docs, required }),
+      tracking: {
+        terms: { version: TRACKING_CONSENT_VERSION, title: TRACKING_CONSENT_TITLE, text: TRACKING_CONSENT_TEXT },
+        acceptedAt: trackingConsent ? consent!.acceptedAt : null,
+      },
+      progress: profileProgress({ profileSaved: Boolean(customer?.zip && driver?.cnhNumber), documents: docs, required, trackingConsent }),
     };
   });
 }
@@ -229,7 +236,10 @@ export async function uploadMyDocument(deps: ServiceDeps, ctx: AccessContext, in
   });
 }
 
-/** Envia o cadastro para análise: PROFILE_INCOMPLETE → PROFILE_COMPLETE → UNDER_REVIEW (seção 21). */
+/**
+ * Envia o cadastro para análise: PROFILE_INCOMPLETE → PROFILE_COMPLETE → UNDER_REVIEW (seção 21).
+ * Exige dados, documentos e a autorização de localização (rastreamento em duas camadas).
+ */
 export async function submitMyProfile(deps: ServiceDeps, ctx: AccessContext, meta?: RequestMeta) {
   authorize(ctx, { permission: "self:profile.manage", companyId: ctx.companyId, ownerUserId: ctx.userId });
   return withTenant(deps.db, ctx, async (tx) => {
@@ -244,12 +254,18 @@ export async function submitMyProfile(deps: ServiceDeps, ctx: AccessContext, met
       ? await tx.select().from(drivers).where(and(eq(drivers.customerId, customer.id), eq(drivers.isCustomerSelf, true)))
       : [];
     const docs = customer ? await currentDocuments(tx, customer.id) : [];
-    const progress = profileProgress({ profileSaved: Boolean(customer?.zip && driver?.cnhNumber), documents: docs, required: await requiredDocuments(tx, ctx.companyId) });
+    const consent = await activeTrackingConsent(tx, ctx.companyId, ctx.userId);
+    const progress = profileProgress({
+      profileSaved: Boolean(customer?.zip && driver?.cnhNumber), documents: docs, required: await requiredDocuments(tx, ctx.companyId),
+      trackingConsent: consent?.version === TRACKING_CONSENT_VERSION,
+    });
     if (!progress.profileSaved) throw new ServiceError("Preencha dados pessoais, endereço e CNH.", 422, "PROFILE_INCOMPLETE");
-    if (!progress.readyToSubmit) {
+    if (!progress.documentsReady) {
       const pending = [...progress.missingDocuments, ...progress.rejectedDocuments].map((t) => DOCUMENT_LABELS[t] ?? t);
       throw new ServiceError(`Envie os documentos pendentes: ${pending.join(", ")}.`, 422, "DOCUMENTS_MISSING");
     }
+    if (!progress.trackingConsent)
+      throw new ServiceError("Ative a localização do celular e aceite a autorização para concluir o cadastro.", 422, "TRACKING_CONSENT_REQUIRED");
 
     if (status === "REGISTERED") await setStatus(tx, ctx.userId, "REGISTERED", "PROFILE_INCOMPLETE");
     if (status !== "PROFILE_COMPLETE") await setStatus(tx, ctx.userId, "PROFILE_INCOMPLETE", "PROFILE_COMPLETE");

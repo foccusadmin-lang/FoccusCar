@@ -1,9 +1,10 @@
-import { DOCUMENT_LABELS, assertTransition, authorize, maskCpf, profileProgress, DEFAULT_REQUIRED_DOCUMENTS, type AccessContext } from "@foccus/core";
+import { DOCUMENT_LABELS, assertTransition, authorize, maskCpf, profileProgress, DEFAULT_REQUIRED_DOCUMENTS, TRACKING_CONSENT_VERSION, type AccessContext } from "@foccus/core";
 import { companies, customerDocuments, customers, drivers, users, withTenant } from "@foccus/db";
 import { and, asc, desc, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 import { audit, notify } from "./audit";
 import { ServiceError, type RequestMeta, type ServiceDeps } from "./deps";
+import { activeTrackingConsent } from "./tracking";
 
 const uuid = z.uuid();
 
@@ -40,6 +41,7 @@ export async function getReviewDetail(deps: ServiceDeps, ctx: AccessContext, cus
     const docsAll = await tx.select().from(customerDocuments).where(and(eq(customerDocuments.customerId, c.id), isNull(customerDocuments.deletedAt))).orderBy(desc(customerDocuments.submittedAt));
     const seen = new Set<string>();
     const docs = docsAll.filter((x) => (seen.has(x.type) ? false : (seen.add(x.type), true)));
+    const consent = await activeTrackingConsent(tx, ctx.companyId, c.userId);
     return {
       customer: {
         id: c.id, fullName: c.fullName, cpf: c.cpf, birthDate: c.birthDate, phone: c.phone, whatsapp: c.whatsapp, email: c.email,
@@ -49,7 +51,8 @@ export async function getReviewDetail(deps: ServiceDeps, ctx: AccessContext, cus
       account: u!,
       cnh: d ? { number: d.cnhNumber, categories: d.cnhCategories, issuedAt: d.cnhIssuedAt, expiresAt: d.cnhExpiresAt } : null,
       documents: docs.map((x) => ({ id: x.id, type: x.type, label: DOCUMENT_LABELS[x.type] ?? x.type, status: x.status, mimeType: x.mimeType, submittedAt: x.submittedAt, rejectionReason: x.rejectionReason, required: req.includes(x.type) })),
-      progress: profileProgress({ profileSaved: true, documents: docs, required: req }),
+      tracking: consent ? { acceptedAt: consent.acceptedAt, version: consent.version, platform: consent.platform } : null,
+      progress: profileProgress({ profileSaved: true, documents: docs, required: req, trackingConsent: consent?.version === TRACKING_CONSENT_VERSION }),
     };
   });
 }

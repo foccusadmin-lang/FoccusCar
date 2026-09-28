@@ -1,9 +1,9 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
-import { buildAccessContext, type Role } from "@foccus/core";
-import { companyMembers, createDb, ensureCompany, users, withTenant, type Database } from "@foccus/db";
+import { TRACKING_CONSENT_VERSION, buildAccessContext, type AccessContext, type Role } from "@foccus/core";
+import { companyMembers, consents, createDb, customerLocations, customers, drivers, ensureCompany, rentals, users, vehicles, withTenant, type Database } from "@foccus/db";
 import { MemoryStorage } from "@foccus/integrations";
-import { approveAccount, getMyProfile, listReviewQueue, readDocumentFile, reviewDocument, saveMyProfile, submitMyProfile, uploadMyDocument, type ServiceDeps } from "./index";
+import { acceptTrackingConsent, approveAccount, getMyProfile, getMyTracking, recordMyLocations, revokeTrackingConsent, listReviewQueue, readDocumentFile, reviewDocument, saveMyProfile, submitMyProfile, uploadMyDocument, type ServiceDeps } from "./index";
 
 const url = process.env.TEST_DATABASE_URL;
 const owner = process.env.TEST_DATABASE_MIGRATION_URL ?? url;
@@ -37,6 +37,10 @@ describe.skipIf(!url)("cadastro do cliente e análise", () => {
     cnh: { number: "12345678901", categories: "AB", issuedAt: "2020-01-01", expiresAt: "2031-01-01" },
   });
 
+  const here = () => ({ latitude: -23.5505, longitude: -46.6333, accuracyM: 12, recordedAt: new Date().toISOString() });
+  const consent = (ctx: AccessContext, extra: Record<string, unknown> = {}) =>
+    acceptTrackingConsent(deps, ctx, { version: TRACKING_CONSENT_VERSION, accepted: true, platform: "ANDROID", position: here(), ...extra }, { ip: "10.0.0.1", userAgent: "teste" });
+
   beforeAll(async () => {
     const o = createDb(owner);
     companyId = (await ensureCompany(o, { name: "Loc Serviços", slug: `svc-${s}` })).id;
@@ -62,7 +66,13 @@ describe.skipIf(!url)("cadastro do cliente e análise", () => {
     for (const type of ["CNH_FRONT", "CNH_BACK", "SELFIE", "PROOF_OF_ADDRESS"] as const)
       await uploadMyDocument(deps, client, { type, fileName: `${type}.jpg`, contentType: "image/jpeg", bytes: JPEG });
     p = await getMyProfile(deps, client);
+    expect(p.progress.documentsReady).toBe(true);
+    expect(p.progress.readyToSubmit).toBe(false);
+    await expect(submitMyProfile(deps, client)).rejects.toThrow(/localização/);
+    await consent(client);
+    p = await getMyProfile(deps, client);
     expect(p.progress.readyToSubmit).toBe(true);
+    expect(p.tracking.acceptedAt).toBeTruthy();
     expect(p.address?.state).toBe("SP");
 
     expect((await submitMyProfile(deps, client)).status).toBe("UNDER_REVIEW");
@@ -92,6 +102,7 @@ describe.skipIf(!url)("cadastro do cliente e análise", () => {
     await saveMyProfile(deps, client, profile(2));
     for (const type of ["CNH_FRONT", "CNH_BACK", "SELFIE", "PROOF_OF_ADDRESS"] as const)
       await uploadMyDocument(deps, client, { type, fileName: "x.jpg", contentType: "image/jpeg", bytes: JPEG });
+    await consent(client);
     await submitMyProfile(deps, client);
     const selfie = (await getMyProfile(deps, client)).documents.find((d) => d.type === "SELFIE")!;
     await expect(reviewDocument(deps, operator, selfie.id, { decision: "REJECT", reason: "" })).rejects.toThrow();
@@ -121,5 +132,56 @@ describe.skipIf(!url)("cadastro do cliente e análise", () => {
     await expect(readDocumentFile(deps, foreignOperator, doc.id)).rejects.toThrow(/não encontrado/);
     const [row] = await db.select({ status: users.status }).from(users).where(eq(users.id, a.userId));
     expect(row!.status).toBe("PROFILE_INCOMPLETE");
+  });
+  it("localização do celular: aceite LGPD, envio só durante a locação e retirada", async () => {
+    const client = await makeUser("CLIENTE");
+    const other = await makeUser("CLIENTE");
+    await expect(consent(client)).rejects.toThrow(/Preencha seus dados/);
+    await saveMyProfile(deps, client, profile(4));
+    await expect(consent(client, { version: "2000-01-01" })).rejects.toThrow();
+    await expect(consent(client, { accepted: false })).rejects.toThrow();
+    await consent(client);
+    await consent(client); // repetir não duplica o aceite
+
+    const owned = await withTenant(db, client, async (tx) => ({
+      consents: await tx.select().from(consents).where(eq(consents.userId, client.userId)),
+      points: await tx.select().from(customerLocations).where(eq(customerLocations.userId, client.userId)),
+    }));
+    expect(owned.consents).toHaveLength(1);
+    expect(owned.consents[0]).toMatchObject({ version: TRACKING_CONSENT_VERSION, platform: "ANDROID", ip: "10.0.0.1" });
+    expect(owned.consents[0]!.textSha256).toMatch(/^[0-9a-f]{64}$/);
+    expect(owned.points.map((p) => p.source)).toEqual(["REGISTRATION", "REGISTRATION"]);
+
+    // sem locação em andamento nada é guardado e o app é mandado parar
+    const batch = { platform: "ANDROID", source: "BACKGROUND", positions: [here(), here()] };
+    expect(await recordMyLocations(deps, client, batch)).toMatchObject({ track: false, reason: "NO_ACTIVE_RENTAL", stored: 0 });
+    expect(await recordMyLocations(deps, other, batch)).toMatchObject({ track: false, reason: "NO_CONSENT" });
+
+    // com locação ativa grava com o vínculo da locação
+    const rental = await withTenant(db, { companyId }, async (tx) => {
+      const [c] = await tx.select().from(customers).where(eq(customers.userId, client.userId));
+      const [d] = await tx.select().from(drivers).where(eq(drivers.customerId, c!.id));
+      const [v] = await tx.insert(vehicles).values({ companyId, plate: `T${String(s).slice(0, 6)}`, brand: "Fiat", model: "Mobi", modelYear: 2024, transmission: "MANUAL", fuelType: "FLEX", dailyRateCents: 10000 }).returning();
+      const [r] = await tx.insert(rentals).values({ companyId, code: `L${s}`, customerId: c!.id, mainDriverId: d!.id, vehicleId: v!.id, startAt: new Date(), expectedReturnAt: new Date(Date.now() + 86_400_000), amountCents: 10000, status: "ACTIVE" }).returning();
+      return r!;
+    });
+    expect((await getMyTracking(deps, client)).decision).toEqual({ track: true, rentalId: rental.id });
+    const old = { ...here(), recordedAt: new Date(Date.now() - 30 * 86_400_000).toISOString() };
+    expect(await recordMyLocations(deps, client, { ...batch, positions: [here(), old] })).toMatchObject({ track: true, stored: 1 });
+    const stored = await withTenant(db, client, (tx) => tx.select().from(customerLocations).where(eq(customerLocations.rentalId, rental.id)));
+    expect(stored).toHaveLength(1);
+    expect(stored[0]!.source).toBe("BACKGROUND");
+
+    // aceite é prova: não pode ser apagado nem alterado, só retirado
+    await expect(withTenant(db, client, (tx) => tx.delete(consents).where(eq(consents.userId, client.userId)))).rejects.toThrow();
+    await expect(withTenant(db, client, (tx) => tx.update(consents).set({ version: "x" }).where(eq(consents.userId, client.userId)))).rejects.toThrow();
+
+    expect(await revokeTrackingConsent(deps, client)).toEqual({ revoked: true, duringRental: true });
+    expect(await recordMyLocations(deps, client, batch)).toMatchObject({ track: false, reason: "NO_CONSENT", stored: 0 });
+    expect((await getMyProfile(deps, client)).progress.trackingConsent).toBe(false);
+
+    // outra empresa não vê os aceites
+    const foreign = await makeUser("OPERADOR", otherCompanyId);
+    expect(await withTenant(db, foreign, (tx) => tx.select().from(consents).where(eq(consents.userId, client.userId)))).toHaveLength(0);
   });
 });

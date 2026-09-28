@@ -3,6 +3,7 @@ import { isRepresentative, isStaff } from "@/lib/navigation";
 import { getAccess, getSession } from "@/server/auth";
 import { ButtonLink } from "./ui/Button";
 import { Logo } from "./Logo";
+import { TrackingAgent } from "./TrackingAgent";
 
 export async function SiteHeader() {
   const session = await getSession();
@@ -14,6 +15,7 @@ export async function SiteHeader() {
   const accountHref = access && checkServiceAccess(access.accountStatus).allowed ? "/conta" : "/cadastro";
   return (
     <header className="site-header">
+      {access && <TrackingAgent />}
       <div className="container inner">
         <Logo height={44} />
         <nav aria-label="Principal">

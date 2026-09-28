@@ -180,7 +180,8 @@ Paleta amostrada da logo (dourado `#F0B030 / #E09020 / #D08010`, preto, prata do
 | Pagamentos | `PaymentGateway` (os 10 métodos da seção 49) | Mercado Pago e Asaas escritos conforme a documentação pública, com validação de webhook (HMAC do Mercado Pago, token do Asaas) testada. **Precisam ser validados em sandbox** com credenciais de teste. Gateway simulado para desenvolvimento, proibido em produção. |
 | Cartão | Tokenização no navegador pelo SDK do gateway | O servidor nunca recebe número completo nem CVV; só guardamos token, bandeira e 4 últimos dígitos |
 | Webhooks | `/api/payments/webhook/{provider}` | Validação de assinatura, gravação única por evento, status final não retrocede (`canMovePayment`) |
-| Telemetria | `TelematicsAdapter` (posições, histórico, comandos) | Interface pronta; o adapter concreto depende do fornecedor de rastreador escolhido |
+| Telemetria | `TelematicsAdapter` (posições, histórico, comandos) + `createTelematicsAdapter` (`TELEMATICS_PROVIDER`) | Interface e rastreador simulado prontos; o adapter concreto entra como um `case` na fábrica quando o fornecedor for escolhido |
+| Localização do celular | `compareTrackingLayers` (carro x celular) | Pronto e testado; alimenta a central de alertas na etapa 9 (seção 13 abaixo) |
 | Bloqueio remoto | `evaluateRemoteCommand` | Só com hardware compatível, confirmação, motivo, comunicação recente e veículo parado; resultado registrado como o provedor informar |
 | Geofencing | ponto-em-polígono + transições | Pronto e testado |
 | Storage | `StorageProvider` (URL assinada) | Validação de tipo, tamanho, extensão e conteúdo real (magic bytes); chave sempre prefixada pela empresa |
@@ -231,3 +232,24 @@ Paleta amostrada da logo (dourado `#F0B030 / #E09020 / #D08010`, preto, prata do
 - **Auditoria (seção 80):** `/admin/historico` lista quem fez, o quê, quando, em qual registro, valor anterior e novo e IP, com filtros por área e período. Todas as ações desta etapa gravam auditoria na mesma transação.
 - **Configurações:** categorias (com CNH exigida) e localizações.
 - **Serviços:** `packages/services/src/fleet.ts`, `users.ts`, `admin.ts`. Regras puras em `packages/core/src/fleet.ts` e `rbac.ts` (`canAccessAdmin`, `canRevokeRole`).
+
+## 13. Rastreamento em duas camadas: veículo + celular do cliente
+
+Decisão do dono (2026-09-28): usar as duas formas por precaução.
+
+1. **Rastreador GPS no veículo (principal).** Funciona com o celular do cliente desligado. Integração pela interface genérica `TelematicsAdapter` (`packages/integrations/src/telematics`); o fornecedor ainda não foi escolhido, então só existe o adapter simulado (`TELEMATICS_PROVIDER=fake`, proibido em produção).
+2. **Localização do celular do cliente (complemento).** Ativada obrigatoriamente na etapa **Localização** do cadastro: o cliente lê a autorização, marca o aceite e o app pede a permissão do aparelho. O aceite só é gravado junto com uma posição real (prova de que a permissão foi concedida). Sem isso o cadastro não é enviado para análise e a elegibilidade de locação falha (`TRACKING_CONSENT`).
+
+**Segundo plano exige app nativo.** Navegador e PWA só entregam localização com a tela aberta (limite do Android e do iOS). Por isso o site é empacotado com **Capacitor** em `apps/mobile` (Android e iPhone), usando o plugin `@capacitor-community/background-geolocation`: durante a locação o Android mostra uma notificação fixa ("Locação em andamento") e o iPhone usa o modo de localização em segundo plano. O mesmo código do site detecta o app (`window.Capacitor`) em `apps/web/src/lib/location-tracker.ts`; no navegador cai para o modo com tela aberta.
+
+**Quando o celular envia.** `TrackingAgent` (montado no cabeçalho para quem está logado) pergunta ao servidor (`GET /api/me/tracking`). Só há envio com aceite vigente **e** locação em retirada, ativa ou em devolução (`TRACKED_RENTAL_STATUSES`). Fora disso `POST /api/me/locations` não grava nada e responde `track: false`, e o app para sozinho. Lotes de até 200 pontos; pontos com data no futuro ou com mais de 7 dias são descartados.
+
+**LGPD.**
+- Tabela `consents`: tipo, versão e SHA-256 do texto exibido, plataforma, data, IP e aparelho. Não pode ser apagada nem alterada (trigger `consents_protect`); só a retirada (`revoked_at`) é registrada. Mudou o texto? Troque `TRACKING_CONSENT_VERSION` e todos aceitam de novo.
+- Tabela `customer_locations`: somente inserção pelo papel da aplicação, vinculada ao aceite e à locação; isolada por empresa (RLS).
+- Retirada: `DELETE /api/me/tracking`. Bloqueia novas locações, avisa o cliente e registra na auditoria; o rastreador do veículo continua ativo porque pertence à frota.
+- O painel de análise mostra se o cliente autorizou e por qual aparelho.
+- O contrato da etapa 4 deve repetir a cláusula de rastreamento (texto em `TRACKING_CONSENT_TEXT`) e o prazo de retenção das posições, a definir com o jurídico.
+
+**Cruzamento das camadas.** `compareTrackingLayers` classifica: juntos, separados (celular longe do carro), só o celular comunica (rastreador sem sinal ou violado) e só o carro comunica. Na etapa 9 isso vira alerta na central Foccus Security.
+

@@ -107,6 +107,7 @@ describe("elegibilidade", () => {
     requiredDocuments: ["CNH_FRONT", "CNH_BACK"],
     reservationConfirmed: true,
     contractSigned: true,
+    trackingConsent: true,
     until: d("2026-10-10"),
   };
   it("libera quando tudo está ok", () => expect(evaluateEligibility(base).eligible).toBe(true));
@@ -117,6 +118,10 @@ describe("elegibilidade", () => {
   it("aponta categoria e documento", () => {
     const r = evaluateEligibility({ ...base, cnh: { expiresAt: d("2030-01-01"), categories: ["A"] }, documents: [] });
     expect(r.failed.map((f) => f.check)).toEqual(["CNH_CATEGORY", "DOCUMENTS_APPROVED"]);
+  });
+  it("exige autorização de rastreamento", () => {
+    const r = evaluateEligibility({ ...base, trackingConsent: false });
+    expect(r.failed.map((f) => f.check)).toEqual(["TRACKING_CONSENT"]);
   });
 });
 

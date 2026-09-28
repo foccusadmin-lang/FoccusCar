@@ -1,0 +1,20 @@
+{
+  "name": "@foccus/mobile",
+  "version": "0.1.0",
+  "private": true,
+  "description": "App Foccus Car para Android e iPhone: empacota o site com localização em segundo plano durante a locação.",
+  "scripts": {
+    "sync": "cap sync",
+    "android": "cap sync android && cap open android",
+    "ios": "cap sync ios && cap open ios"
+  },
+  "dependencies": {
+    "@capacitor-community/background-geolocation": "^1.2.26",
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/core": "^8.5.2",
+    "@capacitor/ios": "^8.5.2"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.5.2"
+  }
+}

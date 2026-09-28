@@ -1,9 +1,9 @@
 import { readFileSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
-import { CHECKLIST_ITEMS, type AccountStatus, type Role } from "@foccus/core";
+import { CHECKLIST_ITEMS, TRACKING_CONSENT_VERSION, type AccountStatus, type Role } from "@foccus/core";
 import {
-  auditLogs, checklistItems, checklists, companyMembers, contracts, createDb, customerDocuments, customers, damages,
+  auditLogs, checklistItems, consents, customerLocations, checklists, companyMembers, contracts, createDb, customerDocuments, customers, damages,
   depositMovements, deposits, drivers, ensureCompany, ownerDatabaseUrl, favorites, financialAccounts, financialTransactions, fines,
   geofences, gpsDevices, gpsPositions, locations, maintenance, maintenanceItems, notifications, occurrences,
   paymentEvents, paymentGatewayConfigs, payments, rentalCharges, rentalDrivers, rentals, representativeListings,
@@ -12,8 +12,9 @@ import {
 } from "@foccus/db";
 import { buildStorageKey, createStorage } from "@foccus/integrations";
 import { hashPassword } from "better-auth/crypto";
-import { eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { DEFAULT_DEMO_PASSWORD, DEMO_DOMAIN } from "./logins";
+import { TRACKING_CONSENT_TYPE } from "../tracking";
 
 /**
  * Locadora de demonstração para o ambiente de testes (docs/AMBIENTE-DE-TESTES.md).
@@ -604,6 +605,30 @@ export async function seedDemo(opts: { databaseUrl?: string; companySlug?: strin
           pts.push({ companyId, deviceId: d!.id, vehicleId: car[c.key]!.id, recordedAt: new Date((lost ? at(-2, 14) : now).getTime() - i * 5 * 60_000), latitude: lat + (moving ? i * 0.0021 : 0), longitude: lng + (moving ? i * 0.0017 : 0), speedKmh: moving && i > 0 ? between(25, 85) : 0, heading: moving ? 215 : 0, ignition: moving && i > 0 });
         await tx.insert(gpsPositions).values(pts);
       }
+      // Localização do celular (segunda camada): aceite LGPD de quem concluiu o cadastro e
+      // pontos do celular acompanhando o carro nas locações em andamento.
+      const consentOf: Record<string, string> = {};
+      for (const p of PEOPLE) {
+        const c = cust[p.key];
+        if (!c?.userId || !p.customer?.complete || (p.status !== "ACTIVE" && p.status !== "UNDER_REVIEW")) continue;
+        const [row] = await tx
+          .insert(consents)
+          .values({ companyId, userId: c.userId, customerId: c.id, type: TRACKING_CONSENT_TYPE, version: TRACKING_CONSENT_VERSION, textSha256: "demo".padEnd(64, "0"), platform: p.key === "mariana" ? "ANDROID" : "WEB", acceptedAt: at(-between(20, 120)), ip: "189.40.10.20", userAgent: "Mozilla/5.0 (demo)" })
+          .returning({ id: consents.id });
+        consentOf[c.id] = row!.id;
+      }
+      for (const r of await tx.select().from(rentals).where(and(eq(rentals.companyId, companyId), eq(rentals.status, "ACTIVE")))) {
+        const consentId = consentOf[r.customerId];
+        const userId = Object.values(cust).find((c) => c.id === r.customerId)?.userId;
+        if (!consentId || !userId) continue;
+        const trail = await tx.select().from(gpsPositions).where(eq(gpsPositions.vehicleId, r.vehicleId)).orderBy(desc(gpsPositions.recordedAt)).limit(12);
+        if (trail.length)
+          await tx.insert(customerLocations).values(trail.map((g) => ({
+            companyId, userId, customerId: r.customerId, rentalId: r.id, consentId, source: "BACKGROUND" as const, platform: "ANDROID" as const,
+            recordedAt: new Date(g.recordedAt.getTime() - 20_000), latitude: g.latitude + 0.0002, longitude: g.longitude - 0.0001, accuracyM: between(8, 35), speedKmh: g.speedKmh,
+          })));
+      }
+
       const [exitAlert] = await tx
         .insert(securityAlerts)
         .values([
